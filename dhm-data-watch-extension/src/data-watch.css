@@ -1236,6 +1236,110 @@ table.watch_table tbody tr.watch_table_tr:hover {
   filter: brightness(0.95);
 }
 
+/* =============================================================
+   FLOATING WEBPAGE EXTENSION TOGGLE WIDGET
+   ============================================================= */
+#dhm-floating-toggle-widget {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999999;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 6px 14px 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  user-select: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#dhm-floating-toggle-widget:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+#dhm-floating-toggle-widget .dhm-widget-brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f72a9;
+  cursor: pointer;
+}
+
+#dhm-floating-toggle-widget .dhm-widget-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  margin: 0 2px;
+}
+
+#dhm-floating-toggle-widget .dhm-widget-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+#dhm-floating-toggle-widget .dhm-widget-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #94a3b8;
+  transition: .25s;
+  border-radius: 20px;
+}
+
+#dhm-floating-toggle-widget .dhm-widget-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .25s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+#dhm-floating-toggle-widget input:checked + .dhm-widget-slider {
+  background-color: #10b981;
+}
+
+#dhm-floating-toggle-widget input:checked + .dhm-widget-slider:before {
+  transform: translateX(16px);
+}
+
+#dhm-floating-toggle-widget .dhm-widget-status {
+  font-size: 11px;
+  font-weight: 800;
+  color: #10b981;
+  min-width: 28px;
+}
+
+#dhm-floating-toggle-widget.is-disabled {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  opacity: 0.85;
+}
+
+#dhm-floating-toggle-widget.is-disabled .dhm-widget-brand {
+  color: #64748b;
+}
+
+#dhm-floating-toggle-widget.is-disabled .dhm-widget-status {
+  color: #64748b;
+}
+
 /* Responsive adjustments */
 @media (max-width: 900px) {
   .dw-header-panel {
