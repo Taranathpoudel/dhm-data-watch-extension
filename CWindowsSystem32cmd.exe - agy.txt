@@ -1,0 +1,472 @@
+Microsoft Windows [Version 10.0.26200.9168]
+(c) Microsoft Corporation. All rights reserved.
+
+Z:\DHM_Hydrology_Site>agy
+
+      ▄▀▀▄        Antigravity CLI 1.1.23
+     ▀▀▀▀▀▀       pas076bce139@wrc.edu.np (Antigravity Starter Quota)
+    ▀▀▀▀▀▀▀▀      Claude Sonnet 4.6 (Thinking)
+   ▄▀▀    ▀▀▄     Z:/DHM_Hydrology_Site
+  ▄▀▀      ▀▀▄
+
+────────────────────────────────────────────────────────────
+> browse "https://hydrology.gov.np/#/?_k=0ik6cg" where you can see a several tabs create a chrome extension to add n ew
+  tab called Data Watch where you sort the sation to show the stations not showing data in 10 minutes interval in nepal
+  time zone. you can read @[Hydrology.html] to get more contenxt about the site.
+
+▸ Thought for 3s
+  Let me start by reading the Hydrology.html file to understand the site structure...
+  Let me start by reading the HTML file to understand the site structure, then browse the live site.
+● Read(Z:/DHM_Hydrology_Site/Hydrology.html)
+● ListDir(Z:/DHM_Hydrology_Site) (ctrl+o to expand)
+
+  Now let me look at the API endpoints used by the site to understand how station data is fetched:
+● Read(Z:/DHM_Hydrology_Site/Hydrology.html)
+● ListDir(Z:/DHM_Hydrology_Site/Hydrology_files) (ctrl+o to expand)
+  Now let me look at the API calls in the JavaScript files to understand the data endpoints:
+
+● Bash(Select-String -Path "Z:\DHM_Hydrology_Site\Hydrology_files\common.js.download" -Pattern "api|...) (ctrl+o to
+expand)
+
+  Let me search for the API endpoints in the main JS file:
+
+● Bash(Select-String -Path "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Pattern
+"hydrology\.gov\....)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+
+  I found the key API endpoint: https://hydrology.gov.np/gss/api. Let me probe the API further:
+
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $matches =
+[regex...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+$content.I...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+'gss/a...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+$content.I...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+
+  Now let me look for the specific API endpoints like /station, /latest, etc.:
+
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+'(?:o|...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+
+  Now let me try fetching the actual API to see its structure:
+
+● ReadURL(https://hydrology.gov.np/gss/api/station)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+'"(/[a...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+$content.I...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+'o\s*\...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+  Let me try to access the API directly to understand the data structure:
+
+● Bash(Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/station" -TimeoutSec 15 -UseBasicParsing 2>&1 | Select-
+...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+$content.I...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw;
+$content.Substrin...)
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+
+  Excellent! The API is returning data. Let me see the full response:
+
+● Bash($response = Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/station" -TimeoutSec 20 -UseBasicParsing;
+$...)
+● Bash($response = Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/waterlevel/latest" -TimeoutSec 20 -
+UseBasic...)
+● Bash($response = Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/reading/latest" -Timeout...) (ctrl+o to
+expand)
+  Now I have the full picture of the API. Let me also check the river watch and rainfall watch endpoints to understand
+  the data structure:
+
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+
+⚠ Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 167h0m28s.
+Error ID: 590b96b0-1729-43f4-93f5-342e4f9a4728-60
+
+────────────────────────────────────────────────────────────
+> ््/model
+
+⚠ Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 166h59m43s.
+Error ID: 590b96b0-1729-43f4-93f5-342e4f9a4728-67
+
+> /model
+  ⎿  Model set to Gemini 3.7 Flash (High)
+
+────────────────────────────────────────────────────────────
+> continue
+
+▸ Thought for 19s, 491 tokens
+  The request involves creating a Chrome extension to monitor a specific website a...
+
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+
+  Let's search in main.6cdcf5af.js.download for how requests are made with o (which is
+  "https://hydrology.gov.np/gss/api").
+  Let's see: where is o exported or imported?
+  In Hydrology_files/main.6cdcf5af.js.download, line containing gss/api had:
+  n.d(t,"e",function(){return o})
+  Let's search where this module or symbol is imported/used in main.6cdcf5af.js.download.
+
+● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+expand)
+
+────────────────────────────────────────────────────────────
+> previous context " browse "https://hydrology.gov.np/#/?_k=0ik6cg" where you can see a several tabs create a chrome
+  extension to add n ew
+    tab called Data Watch where you sort the sation to show the stations not showing data in 10 minutes interval in
+  nepal
+    time zone. you can read @[Hydrology.html] to get more contenxt about the site.
+
+  ▸ Thought for 3s
+    Let me start by reading the Hydrology.html file to understand the site structure...
+    Let me start by reading the HTML file to understand the site structure, then browse the live site.
+  ● Read(Z:/DHM_Hydrology_Site/Hydrology.html)
+  ● ListDir(Z:/DHM_Hydrology_Site) (ctrl+o to expand)
+
+    Now let me look at the API endpoints used by the site to understand how station data is fetched:
+  ● Read(Z:/DHM_Hydrology_Site/Hydrology.html)
+  ● ListDir(Z:/DHM_Hydrology_Site/Hydrology_files) (ctrl+o to expand)
+    Now let me look at the API calls in the JavaScript files to understand the data endpoints:
+
+  ● Bash(Select-String -Path "Z:\DHM_Hydrology_Site\Hydrology_files\common.js.download" -Pattern "api|...) (ctrl+o to
+  expand)
+
+    Let me search for the API endpoints in the main JS file:
+
+  ● Bash(Select-String -Path "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Pattern
+  "hydrology\.gov\....)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+  expand)
+
+    I found the key API endpoint: https://hydrology.gov.np/gss/api. Let me probe the API further:
+
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $matches =
+  [regex...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+  $content.I...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+  'gss/a...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+  $content.I...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+  expand)
+
+    Now let me look for the specific API endpoints like /station, /latest, etc.:
+
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+  '(?:o|...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+  expand)
+
+    Now let me try fetching the actual API to see its structure:
+
+  ● ReadURL(https://hydrology.gov.np/gss/api/station)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+  '"(/[a...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+  $content.I...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $pattern =
+  'o\s*\...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+  expand)
+    Let me try to access the API directly to understand the data structure:
+
+  ● Bash(Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/station" -TimeoutSec 15 -UseBasicParsing 2>&1 |
+  Select-
+  ...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw; $idx =
+  $content.I...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw;
+  $content.Substrin...)
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+  expand)
+
+    Excellent! The API is returning data. Let me see the full response:
+
+  ● Bash($response = Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/station" -TimeoutSec 20 -UseBasicParsing;
+  UseBasic...)
+  ● Bash($response = Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/reading/latest" -Timeout...) (ctrl+o to
+  expand)
+    Now I have the full picture of the API. Let me also check the river watch and rainfall watch endpoints to understan
+    the data structure:
+
+  ● Bash($content = Get-Content "Z:\DHM_Hydrology_Site\Hydrology_files\main.6cdcf5af.js.download" -Raw...) (ctrl+o to
+  expand)
+
+  ⚠ Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 167h0m28s.
+  Error ID: 590b96b0-1729-43f4-93f5-342e4f9a4728-60
+
+  ────────────────────────────────────────────────────────────
+  > ््/model
+
+  ⚠ Individual quota reached. Please upgrade your subscription to increase your limits. Resets in 166h59m43s.
+  Error ID: 590b96b0-1729-43f4-93f5-342e4f9a4728-67
+
+  $...)
+  ● Bash($response = Invoke-WebRequest -Uri "https://hydrology.gov.np/gss/api/waterlevel/latest" -TimeoutSec 20 -
+  > /model
+    ⎿  Model set to Gemini 3.7 Flash (High)
+
+  ────────────────────────────────────────────────────────────
+  > continue"
+
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ") (ctrl+o to expand)
+
+▸ Thought for 3s, 314 tokens
+  The site appears to use `socket.io` for real-time data from `hydrology.gov.np`. ...
+
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ") (ctrl+o to expand)
+
+▸ Thought for 29s, 1.5k tokens
+  Examining the existing task's actions to understand its behavior. Simultaneously...
+● ManageTask(status 337d3008-90cc-4117-befe-4530257ad56c/task-123)
+● Bash(node -e ") (ctrl+o to expand)
+
+▸ Thought for 4s, 328 tokens
+  The target webpage already utilizes a Socket.io client and MobX store within its...
+
+● Bash(node -e ") (ctrl+o to expand)
+
+▸ Thought for 8s, 320 tokens
+  `M` represents the socket instance created through a specific connection functio...
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Create(Z:/DHM_Hydrology_Site/test_socket.js) (ctrl+o to expand)
+
+▸ Thought for 4s, 191 tokens
+  The distinction between artifacts and project code files requires careful handli...
+
+● Bash(node -e ")
+● Bash(@')
+● ManageTask(status 337d3008-90cc-4117-befe-4530257ad56c/task-142)
+● ManageTask(kill 337d3008-90cc-4117-befe-4530257ad56c/task-142)
+● Bash(@') (ctrl+o to expand)
+
+▸ Thought for 17s, 1.3k tokens
+  Current water level is 3.2 at 11:55, while the last rainfall observation was at ...
+
+● Bash(Remove-Item -Path "Z:\DHM_Hydrology_Site\test_socket.js", "Z:\DHM_Hydrology_Site\test_rainfal...) (ctrl+o to
+expand)
+
+▸ Thought for 6s, 357 tokens
+  Planning a modular Chrome Extension (Manifest V3) structure begins with defining...
+
+● Bash(New-Item -ItemType Directory -Force -Path "Z:\DHM_Hydrology_Site\dhm-data-watch-extension\ico...) (ctrl+o to
+expand)
+
+▸ Thought for 14s, 2.2k tokens
+  Investigating the site's tab rendering and routing mechanism. Examining `Hydrolo...
+
+● Bash(@')
+● Bash(@')
+● Bash(Remove-Item -Path "Z:\DHM_Hydrology_Site\generate_icons.js", "Z:\DHM_Hydrology_Site\generate_...) (ctrl+o to
+expand)
+
+▸ Thought for 9s, 311 tokens
+  Planning the Chrome Extension structure begins with the core `manifest.json` fil...
+
+● Bash(@') (ctrl+o to expand)
+
+▸ Thought for 24s, 894 tokens
+  Determining the necessary styles for the `data-watch.css` file requires aligning...
+
+● Bash(@') (ctrl+o to expand)
+
+▸ Thought for 29s, 1.5k tokens
+  Begin by identifying the location of the `.tabs` element within the application'...
+● Bash(@')
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ") (ctrl+o to expand)
+
+▸ Thought for 25s, 114 tokens
+  The plan is to generate the necessary scripts. A Node.js script will handle stan...
+● Bash(@')
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e ")
+● Bash(node -e 'console.log("Hello from single quotes");')
+● Bash(node -e ') (ctrl+o to expand)
+
+▸ Thought for 6s, 145 tokens
+  Initial focus is on constructing the user interface components for the popup. Th...
+
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node -e ') (ctrl+o to expand)
+
+▸ Thought for 23s, 216 tokens
+  The next step is to generate `src/content.js`. A node script will be prepared to...
+● Bash(node -e ')
+● Bash(python --version)
+● Bash(python -c ")
+● Bash(python -c ")
+● Bash(python -c ")
+● Bash(python -c ")
+● Bash(python -c ")
+● Bash(python -c "import sys; print('Ready to write builder')")
+● Bash(python -c ")
+● Bash(python -c ")
+● Bash(python -c "import base64; print(base64.b64decode('SGVsbG8gV29ybGQ=').decode('utf-8'))")
+● Bash(python -c ") (ctrl+o to expand)
+
+▸ Thought for 18s, 1.2k tokens
+  Preparing to process the `content.js` file. The initial focus is on the introduc...
+● Bash(python -c ")
+● Bash(python -c ")
+● Bash(python -c ")
+● Bash(python -c 'print("Hello " + "World")')
+● Bash(python -c ')
+● Bash(python -c ')
+● Bash(python -c ')
+● Bash(node -e ')
+● Bash(python -c ')
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node -e ')
+● Bash(node --check "Z:\DHM_Hydrology_Site\dhm-data-watch-extension\src\content.js")
+● Bash(node --check "Z:\DHM_Hydrology_Site\dhm-data-watch-extension\src\popup.js")
+● Bash(node -e ')
+● Bash(node --check "Z:\DHM_Hydrology_Site\dhm-data-watch-extension\src\content.js")
+● Bash(Remove-Item -Path "Z:\DHM_Hydrology_Site\make_content.py", "Z:\DHM_Hydrology_Site\build_scrip...) (ctrl+o to
+expand)
+
+▸ Thought for 8s, 114 tokens
+  Creating the `README.md` requires outlining the extension's purpose, installatio...
+● Bash(node -e ')
+● ListDir(Z:/DHM_Hydrology_Site/dhm-data-watch-extension)
+● ListDir(Z:/DHM_Hydrology_Site/dhm-data-watch-extension/src)
+● ListDir(Z:/DHM_Hydrology_Site/dhm-data-watch-extension/icons)
+● Bash(node -e ') (ctrl+o to expand)
+
+   DHM Hydrology — Data Watch Chrome Extension (Manifest V3)
+
+  A Chrome extension has been created in the workspace at dhm-data-watch-extension for the Department of Hydrology and
+  Meteorology (DHM) Nepal portal (https://hydrology.gov.np/).
+  ──────
+  ## 🌟 Key Features & Capabilities
+
+  ### 1. Injected "Data Watch" Navigation Tab
+
+  • Seamlessly injected into the DHM top navigation bar alongside the existing tabs (Real Time Data, River Watch,
+  Rainfall Watch, etc.).
+  • Matches the site's Material-UI styling (active #0f72a9 blue state vs white inactive state).
+  • Integrated with hash-based routing (#/data_watch).
+
+  ### 2. 10-Minute Reporting Interval Surveillance in Nepal Time (NPT, UTC+5:45)
+
+  • Automated station telemetry across Nepal is scheduled to transmit at 10-minute intervals.
+  • The extension calculates the elapsed time from each station's latest observation timestamp normalized to Nepal
+  Standard Time (UTC+5:45).
+  • Categorization Tiers:
+      • 🟢 On-Time (≤ 10 mins): Normal reporting cycle.
+      • 🟡 Delayed (> 10 mins to 30 mins): Missed 1 to 3 reporting cycles.
+      • 🟠 Moderate Delay (> 30 mins to 1 hour): Multiple missed cycles.
+      • 🔴 Critical Outage (> 1 hour to 24 hours): Urgent attention required.
+      • ⚪ Offline / Inactive (> 24 hours or No Telemetry): Inactive station.
+
+
+  ### 3. Default Sorting: Longest Delayed Stations First
+
+  • Default Sort: Stations NOT showing data in 10-minute interval sorted first (longest delay / overdue time at the
+  top).
+  • Additional sort options:
+      • Shortest delay first
+      • Last updated time (Newest / Oldest)
+      • Station Name (A–Z / Z–A)
+      • Basin Name (A–Z)
+      • District (A–Z)
+  ### 4. Interactive Filters, Search & Live KPI Dashboard
+  • Top KPI Cards: Total Monitored Stations, Delayed Stations count & percentage, Critical count, On-time count, and
+  Overall Telemetry Health Rate (%).
+  • Digital Live Nepal Clock: Displays live ticking time in HH:mm:ss A NPT with current day and date.
+  • Status Filter Pills: Instant one-click filtering by status (Delayed >10m, Critical >1h, Offline >24h, On-Time ≤10m,
+  All).
+  • Multi-Dimension Selectors: Filter by Basin (Koshi, Narayani, Karnali, Bagmati, Mahakali, West Rapti, Babai, Kamala,
+  Kankai, etc.), District, or Station Type (Water Level, Rainfall, Combined).
+  • Instant Search: Real-time search across station name (English and Nepali), station index, ID, basin, and district.
+
+  ### 5. DHM Operational Utilities
+
+  • 📥 1-Click CSV Export: Download delayed stations report with Nepali timestamps, delay durations, and readings for
+  maintenance teams.
+  • 🔄 Auto-Refresh Engine: Configurable polling intervals (30s, 1 min, 2 mins, 5 mins, or Manual).
+  • ↗️ Direct Station Linking: Jump directly to station hydrographs and historical charts (#/basin/:id).
+  • 🧩 Toolbar Action Popup: Quick overview and search available by clicking the extension icon in Chrome.
+  ──────
+  ## 📂 Extension Files Created
+
+    dhm-data-watch-extension/
+    ├── manifest.json              # Chrome Manifest V3 configuration
+    ├── README.md                  # Comprehensive documentation
+    ├── icons/                     # Extension branding icons
+    │   ├── icon16.png
+    │   ├── icon48.png
+    │   ├── icon128.png
+    │   └── icon.svg
+    └── src/
+        ├── content.js             # Core script: Tab injection, socket telemetry sync, sorting & NPT time
+  calculations
+        ├── data-watch.css         # Material-UI theme styles, table & KPI cards
+        ├── background.js          # Background service worker & alarm scheduler
+        ├── popup.html             # Toolbar quick-view popup interface
+        ├── popup.js               # Toolbar popup logic & station search
+        └── popup.css              # Popup styling
+  ──────
+  ## 🚀 How to Install & Use in Google Chrome
+
+  1. Open Google Chrome (or Edge / Brave / Chromium).
+  2. In the address bar, go to chrome://extensions/.
+  3. Toggle on Developer mode in the top-right corner.
+  4. Click the "Load unpacked" button in the top-left corner.
+  5. Select the folder:
+    Z:\DHM_Hydrology_Site\dhm-data-watch-extension
+
+  6. Open https://hydrology.gov.np/ https://hydrology.gov.np/ in your browser.
+  7. Click the new "Data Watch" tab in the navigation bar to monitor delayed stations in real-time.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                                  Gemini 3.7 Flash · high

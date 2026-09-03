@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "DHM Hydrology - Data Watch & River Watch Trend Sorter",
+  "version": "1.1.0",
+  "description": "Monitors 10-min telemetry delays in Nepal Time and adds interactive column sorting (Rising, Falling, Steady trends) to River Watch tables on DHM Hydrology.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "DHM Data Watch & River Watch Telemetry"
+  },
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://hydrology.gov.np/*",
+    "http://hydrology.gov.np/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://hydrology.gov.np/*",
+        "http://hydrology.gov.np/*"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "css": [
+        "src/data-watch.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/data-watch.css",
+        "icons/*"
+      ],
+      "matches": [
+        "https://hydrology.gov.np/*",
+        "http://hydrology.gov.np/*"
+      ]
+    }
+  ]
+}
