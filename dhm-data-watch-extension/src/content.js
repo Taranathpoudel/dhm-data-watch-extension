@@ -493,6 +493,53 @@
     state.loading = false;
   }
 
+  function extractFallbackTelemetryFromDOM() {
+    const table = document.querySelector("table.watch_table");
+    if (!table) return [];
+
+    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    const fallbackStations = [];
+
+    rows.forEach((tr, idx) => {
+      const data = extractRiverWatchRowData(tr, idx);
+      if (!data) return;
+
+      const diffObj = data.diffObj || calculateWaterLevelDifferences(data.waterLevel, data.warningLevel, data.dangerLevel);
+
+      fallbackStations.push({
+        id: "dom_" + (data.stationIndex || idx),
+        identifier: data.stationIndex || String(idx),
+        name: data.stationName || "Station " + (idx + 1),
+        nepaliName: "",
+        stationIndex: data.stationIndex || "",
+        basin: data.basin || "Other",
+        district: data.district || "Unknown",
+        latitude: null,
+        longitude: null,
+        elevation: null,
+        waterLevel: data.waterLevel,
+        waterLevelTime: data.stationTime || null,
+        waterLevelTrend: data.trend || "",
+        waterLevelStatus: data.status || "",
+        warningLevel: data.warningLevel,
+        dangerLevel: data.dangerLevel,
+        diffWarning: diffObj.diffWarning,
+        diffDanger: diffObj.diffDanger,
+        diffInfo: diffObj,
+        rainfall: null,
+        rainfallTime: null,
+        rainfallStatus: null,
+        latestTime: data.stationTime ? new Date(data.stationTime).toISOString() : null,
+        delayMinutes: calculateDelayMinutes(data.stationTime),
+        type: "Water Level",
+        isReportingOnTime: calculateDelayMinutes(data.stationTime) <= 10,
+        delayInfo: formatDelayDuration(calculateDelayMinutes(data.stationTime))
+      });
+    });
+
+    return fallbackStations;
+  }
+
   async function syncAllData() {
     state.loading = true;
     if (state.isDataWatchActive) renderDashboardContent();
@@ -501,6 +548,16 @@
     }
     await fetchSocketData();
     processStationTelemetry();
+
+    if (state.stations.length === 0) {
+      const domFallback = extractFallbackTelemetryFromDOM();
+      if (domFallback.length > 0) {
+        state.stations = domFallback;
+        state.loading = false;
+        state.lastSyncTime = new Date();
+      }
+    }
+
     if (state.isDataWatchActive) renderDashboardContent();
   }
 
@@ -649,37 +706,47 @@
      ========================================================================== */
   function injectDataWatchTab() {
     const tabsContainer = document.querySelector(".tabs");
-    if (!tabsContainer || document.getElementById("dhm-data-watch-tab-link")) return;
+    if (!tabsContainer) return;
 
-    const tabWrapper = document.createElement("a");
-    tabWrapper.href = "#/data_watch";
-    tabWrapper.id = "dhm-data-watch-tab-link";
-    tabWrapper.style.textDecoration = "none";
+    let tabWrapper = document.getElementById("dhm-data-watch-tab-link");
 
-    tabWrapper.innerHTML = `
-      <div class="dhm-data-watch-tab-btn" id="dhm-data-watch-btn-container">
-        <button tabindex="0" type="button">
-          <div>
-            <div class="tab-label">
-              <span>Data Watch</span>
-              <span class="dhm-tab-pulse-badge" title="10-Min Telemetry Watch (Nepal Time)"></span>
+    // If tab element exists but was detached from .tabs by React re-render, re-append it
+    if (tabWrapper && tabWrapper.parentElement !== tabsContainer) {
+      tabWrapper.remove();
+      tabWrapper = null;
+    }
+
+    if (!tabWrapper) {
+      tabWrapper = document.createElement("a");
+      tabWrapper.href = "#/data_watch";
+      tabWrapper.id = "dhm-data-watch-tab-link";
+      tabWrapper.style.textDecoration = "none";
+
+      tabWrapper.innerHTML = `
+        <div class="dhm-data-watch-tab-btn" id="dhm-data-watch-btn-container">
+          <button tabindex="0" type="button">
+            <div>
+              <div class="tab-label">
+                <span>Data Watch</span>
+                <span class="dhm-tab-pulse-badge" title="10-Min Telemetry Watch (Nepal Time)"></span>
+              </div>
             </div>
-          </div>
-        </button>
-      </div>
-    `;
+          </button>
+        </div>
+      `;
 
-    tabWrapper.addEventListener("click", (e) => {
-      e.preventDefault();
-      window.location.hash = "#/data_watch";
-      activateDataWatchView();
-    });
+      tabWrapper.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.location.hash = "#/data_watch";
+        activateDataWatchView();
+      });
 
-    const rainfallTab = tabsContainer.querySelector("a[href*=\"rainfall_watch\"]");
-    if (rainfallTab && rainfallTab.nextSibling) {
-      tabsContainer.insertBefore(tabWrapper, rainfallTab.nextSibling);
-    } else {
-      tabsContainer.appendChild(tabWrapper);
+      const rainfallTab = tabsContainer.querySelector("a[href*=\"rainfall_watch\"]");
+      if (rainfallTab && rainfallTab.nextSibling) {
+        tabsContainer.insertBefore(tabWrapper, rainfallTab.nextSibling);
+      } else {
+        tabsContainer.appendChild(tabWrapper);
+      }
     }
   }
 
@@ -1674,7 +1741,7 @@
 
       let visibleCount = 0;
 
-      // Re-order rows in DOM & apply filtering
+      // Re-order rows in DOM only if the parent/order changes
       const fragment = document.createDocumentFragment();
 
       sorted.forEach((row) => {
@@ -2136,24 +2203,42 @@
       if (state.extensionEnabled) handleHashRouting();
     });
 
-    // MutationObserver to catch React route transitions and dynamic table renders
+    // Debounced MutationObserver to prevent infinite loops and DOM thrashing
+    let observerDebounceTimer = null;
     const observer = new MutationObserver((mutations) => {
-      injectFloatingToggleWidget();
+      // Ignore mutations originating inside extension injected UI elements
+      const isExtensionMutation = mutations.every(m => {
+        const target = m.target;
+        return target && (
+          target.closest("#dhm-data-watch-root") ||
+          target.closest("#dhm-floating-toggle-widget") ||
+          target.closest("#dhm-river-watch-enhancer")
+        );
+      });
 
-      if (!state.extensionEnabled) return;
+      if (isExtensionMutation) return;
 
-      injectDataWatchTab();
+      if (observerDebounceTimer) return;
 
-      const hash = window.location.hash || "";
+      observerDebounceTimer = setTimeout(() => {
+        observerDebounceTimer = null;
 
-      if (hash.startsWith("#/data_watch") && !state.isDataWatchActive) {
-        activateDataWatchView();
-      } else if (hash.startsWith("#/river_watch") || hash.includes("river_watch") || document.querySelector("table.watch_table")) {
-        if (!riverWatchState.isSorting) {
-          clearTimeout(riverWatchState.reapplyTimer);
-          riverWatchState.reapplyTimer = setTimeout(checkAndEnhanceRiverWatch, 150);
+        injectFloatingToggleWidget();
+
+        if (!state.extensionEnabled) return;
+
+        injectDataWatchTab();
+
+        const hash = window.location.hash || "";
+
+        if (hash.startsWith("#/data_watch")) {
+          if (!state.isDataWatchActive) activateDataWatchView();
+        } else if (hash.startsWith("#/river_watch") || hash.includes("river_watch") || document.querySelector("table.watch_table")) {
+          if (!riverWatchState.isSorting) {
+            checkAndEnhanceRiverWatch();
+          }
         }
-      }
+      }, 100);
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
