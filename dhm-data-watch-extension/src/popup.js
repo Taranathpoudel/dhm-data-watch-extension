@@ -1,6 +1,52 @@
 document.addEventListener("DOMContentLoaded", () => {
   let stations = [];
   let currentFilter = "all";
+  let extensionEnabled = true;
+
+  // Extension toggle element references
+  const extensionToggle = document.getElementById("pop-extension-toggle");
+  const toggleStatusLabel = document.getElementById("pop-toggle-status");
+
+  function updateToggleUI(enabled) {
+    extensionEnabled = enabled;
+    if (extensionToggle) extensionToggle.checked = enabled;
+    if (toggleStatusLabel) {
+      toggleStatusLabel.textContent = enabled ? "ON" : "OFF";
+      if (enabled) {
+        toggleStatusLabel.classList.remove("off");
+      } else {
+        toggleStatusLabel.classList.add("off");
+      }
+    }
+  }
+
+  // Load stored extension toggle state
+  if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get({ extensionEnabled: true }, (res) => {
+      updateToggleUI(res.extensionEnabled);
+    });
+  }
+
+  if (extensionToggle) {
+    extensionToggle.addEventListener("change", (e) => {
+      const isEnabled = e.target.checked;
+      updateToggleUI(isEnabled);
+
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ extensionEnabled: isEnabled }, () => {
+          // Send message to active tabs
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs && tabs[0] && tabs[0].id) {
+              chrome.tabs.sendMessage(tabs[0].id, {
+                action: "EXTENSION_TOGGLED",
+                enabled: isEnabled
+              }).catch(() => {});
+            }
+          });
+        });
+      }
+    });
+  }
   
   function updateClock() {
     const d = new Date();

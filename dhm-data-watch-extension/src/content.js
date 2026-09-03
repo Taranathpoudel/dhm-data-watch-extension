@@ -40,7 +40,8 @@
     autoRefreshTimer: null,
     clockTimer: null,
     isDataWatchActive: false,
-    socketSid: null
+    socketSid: null,
+    extensionEnabled: true
   };
 
   /* ==========================================================================
@@ -1994,13 +1995,153 @@
       .replace(/\x27/g, "&#039;");
   }
 
-  function init() {
+  /* ==========================================================================
+     FLOATING WEBPAGE EXTENSION TOGGLE WIDGET
+     ========================================================================== */
+  function injectFloatingToggleWidget() {
+    if (document.getElementById("dhm-floating-toggle-widget")) return;
+
+    const widget = document.createElement("div");
+    widget.id = "dhm-floating-toggle-widget";
+    widget.title = "DHM Data Watch & River Watch Extension Sorter (Click to toggle ON/OFF)";
+
+    widget.innerHTML = `
+      <div class="dhm-widget-brand">
+        <span>🌊</span>
+        <span>DHM Watch</span>
+      </div>
+      <label class="dhm-widget-switch">
+        <input type="checkbox" id="dhm-widget-toggle-input" ${state.extensionEnabled ? "checked" : ""}>
+        <span class="dhm-widget-slider"></span>
+      </label>
+      <span class="dhm-widget-status" id="dhm-widget-status-text">${state.extensionEnabled ? "ON" : "OFF"}</span>
+    `;
+
+    document.body.appendChild(widget);
+
+    const toggleInput = widget.querySelector("#dhm-widget-toggle-input");
+    if (toggleInput) {
+      toggleInput.addEventListener("change", (e) => {
+        setExtensionEnabledState(e.target.checked);
+      });
+    }
+
+    updateFloatingWidgetUI();
+  }
+
+  function updateFloatingWidgetUI() {
+    const widget = document.getElementById("dhm-floating-toggle-widget");
+    if (!widget) return;
+
+    const toggleInput = widget.querySelector("#dhm-widget-toggle-input");
+    const statusText = widget.querySelector("#dhm-widget-status-text");
+
+    if (toggleInput) toggleInput.checked = state.extensionEnabled;
+    if (statusText) statusText.textContent = state.extensionEnabled ? "ON" : "OFF";
+
+    if (state.extensionEnabled) {
+      widget.classList.remove("is-disabled");
+    } else {
+      widget.classList.add("is-disabled");
+    }
+  }
+
+  function setExtensionEnabledState(enabled) {
+    state.extensionEnabled = enabled;
+
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ extensionEnabled: enabled });
+    }
+
+    updateFloatingWidgetUI();
+
+    if (enabled) {
+      enableExtensionFeatures();
+    } else {
+      disableExtensionFeatures();
+    }
+  }
+
+  function enableExtensionFeatures() {
     injectDataWatchTab();
     handleHashRouting();
-    window.addEventListener("hashchange", () => handleHashRouting());
+  }
+
+  function disableExtensionFeatures() {
+    // 1. Remove injected Data Watch Tab button
+    const tabBtn = document.getElementById("dhm-data-watch-tab-link");
+    if (tabBtn) tabBtn.remove();
+
+    // 2. If currently on #/data_watch tab, deactivate view and return to standard route
+    if (window.location.hash.startsWith("#/data_watch")) {
+      deactivateDataWatchView();
+      window.location.hash = "#/river_watch";
+    }
+
+    // 3. Remove River Watch Toolbar
+    const rwToolbar = document.getElementById("dhm-river-watch-enhancer");
+    if (rwToolbar) rwToolbar.remove();
+
+    // 4. Reset River Watch Table headers if enhanced
+    const table = document.querySelector("table.watch_table");
+    if (table) {
+      const thead = table.querySelector("thead");
+      if (thead) {
+        thead.querySelectorAll("th").forEach(th => {
+          th.removeAttribute("data-dhm-sorter-init");
+          th.classList.remove("dhm-sortable-th", "dhm-th-active", "dhm-th-trend", "dhm-th-status");
+        });
+      }
+    }
+  }
+
+  /* ==========================================================================
+     TIMERS & LIFECYCLE INITIALIZATION
+     ========================================================================== */
+  function init() {
+    // Read extension state from chrome.storage
+    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get({ extensionEnabled: true }, (res) => {
+        state.extensionEnabled = res.extensionEnabled !== false;
+
+        injectFloatingToggleWidget();
+
+        if (state.extensionEnabled) {
+          enableExtensionFeatures();
+        } else {
+          disableExtensionFeatures();
+        }
+      });
+
+      // Listen for popup toggles or storage updates
+      chrome.storage.onChanged.addListener((changes, namespace) => {
+        if (namespace === "local" && changes.extensionEnabled) {
+          setExtensionEnabledState(changes.extensionEnabled.newValue);
+        }
+      });
+
+      if (chrome.runtime && chrome.runtime.onMessage) {
+        chrome.runtime.onMessage.addListener((msg) => {
+          if (msg && msg.action === "EXTENSION_TOGGLED") {
+            setExtensionEnabledState(msg.enabled);
+          }
+        });
+      }
+    } else {
+      injectFloatingToggleWidget();
+      enableExtensionFeatures();
+    }
+
+    window.addEventListener("hashchange", () => {
+      if (state.extensionEnabled) handleHashRouting();
+    });
 
     // MutationObserver to catch React route transitions and dynamic table renders
     const observer = new MutationObserver((mutations) => {
+      injectFloatingToggleWidget();
+
+      if (!state.extensionEnabled) return;
+
       injectDataWatchTab();
 
       const hash = window.location.hash || "";
