@@ -13,10 +13,10 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Periodic telemetry polling alarm
+// Periodic telemetry polling alarm (every 2 min)
 chrome.alarms.create("dhm_poll_alarm", { periodInMinutes: 2 });
 
-// 5-minute auto-refresh background alarm (ensures background tabs are also refreshed every 5 min)
+// Auto-refresh data alarm (every 5 min) - updates data without page reload
 chrome.alarms.create("dhm_autorefresh_5min_alarm", { periodInMinutes: 5 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -26,7 +26,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       .then(r => r.text())
       .catch(() => {});
   } else if (alarm.name === "dhm_autorefresh_5min_alarm") {
-    // Broadcast 5-minute auto-refresh to hydrology tabs
+    // Broadcast auto-refresh to hydrology tabs (data update only, no page reload)
     chrome.storage.local.get({ extensionEnabled: true, autoRefreshEnabled: true }, (res) => {
       if (res.extensionEnabled !== false && res.autoRefreshEnabled !== false) {
         chrome.tabs.query({ url: ["https://hydrology.gov.np/*", "http://hydrology.gov.np/*"] }, (tabs) => {

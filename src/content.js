@@ -952,16 +952,20 @@
   }
 
   function executePageRefresh() {
-    console.log("[DHM Extension] Auto-refresh triggered. Reloading on Compare default...");
+    console.log("[DHM Extension] Auto-refresh triggered. Updating data without page reload...");
     if (state.autoNavigateRiverWatch) {
-      if (window.location.protocol.startsWith("http")) {
-        const targetUrl = window.location.origin + window.location.pathname + "#/compare";
-        if (window.location.href !== targetUrl) window.location.href = targetUrl;
-      } else {
-        window.location.hash = "#/compare";
+      const hash = window.location.hash || "";
+      if (!hash.includes("compare")) {
+        const compareLink = document.getElementById("dhm-compare-tab-link");
+        if (compareLink) {
+          compareLink.click();
+        } else {
+          window.location.hash = "#/compare";
+        }
       }
     }
-    window.location.reload();
+    syncAllData();
+    state.nextRefreshTimestamp = Date.now() + state.autoRefreshInterval * 1000;
   }
 
   // REPLACES ensureRiverWatchAndRising
@@ -1012,7 +1016,7 @@
     widget.title = "DHM Data Watch & Compare Extension (Click to toggle ON/OFF)";
     widget.innerHTML = `
       <div class="dhm-widget-brand"><span>🌊</span><span>DHM Watch</span></div>
-      <div class="dhm-widget-timer-chip" id="dhm-widget-timer-chip" title="Auto-refresh with Compare page priority">
+      <div class="dhm-widget-timer-chip" id="dhm-widget-timer-chip" title="Auto-refresh data every 5 minutes (no page reload)">
         <span class="dhm-widget-timer-icon">⏱️</span><span class="dhm-widget-timer-time" id="dhm-widget-timer-time">5:00</span>
       </div>
       <label class="dhm-widget-switch"><input type="checkbox" id="dhm-widget-toggle-input" ${state.extensionEnabled ? "checked" : ""}><span class="dhm-widget-slider"></span></label>

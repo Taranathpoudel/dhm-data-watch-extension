@@ -353,21 +353,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const refreshNowBtn = document.getElementById("pop-btn-refresh-now");
   if (refreshNowBtn) {
     refreshNowBtn.addEventListener("click", () => {
-      refreshNowBtn.textContent = "⏳ Reloading...";
+      refreshNowBtn.textContent = "⏳ Refreshing data...";
       if (typeof chrome !== "undefined" && chrome.tabs) {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs && tabs[0] && tabs[0].id) {
             const url = tabs[0].url || "";
             if (url.includes("hydrology.gov.np")) {
               chrome.tabs.sendMessage(tabs[0].id, { action: "TRIGGER_5MIN_AUTO_REFRESH" }).then(() => {
-                window.close();
+                refreshNowBtn.textContent = "🔄 Refresh Data";
               }).catch(() => {
-                chrome.tabs.update(tabs[0].id, { url: "https://hydrology.gov.np/#/river_watch" }, () => window.close());
+                refreshNowBtn.textContent = "🔄 Refresh Data";
               });
               return;
             }
           }
-          chrome.tabs.create({ url: "https://hydrology.gov.np/#/river_watch" }, () => window.close());
+          refreshNowBtn.textContent = "🔄 Refresh Data";
         });
       }
     });
