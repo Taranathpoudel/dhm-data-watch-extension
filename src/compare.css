@@ -1,15 +1,26 @@
-/* DHM Station Compare Tab & Styles */
+/* DHM Hydrology - Compare Stations Styles */
 
 :root {
   --dhm-primary: #0f72a9;
   --dhm-primary-dark: #0a547e;
+  --dhm-primary-light: #e6f4fb;
+  --dhm-accent: #ff9800;
+  --dhm-danger: #e53935;
+  --dhm-danger-bg: #ffebee;
+  --dhm-warning: #f59e0b;
+  --dhm-warning-bg: #fef3c7;
+  --dhm-success: #10b981;
+  --dhm-success-bg: #ecfdf5;
+  --dhm-gray-bg: #f8fafc;
+  --dhm-border: #e2e8f0;
   --dhm-text-dark: #1e293b;
   --dhm-text-muted: #64748b;
-  --dhm-border: #e2e8f0;
+  --dhm-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --dhm-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-/* Custom Compare Tab Button */
-.dhm-custom-tab-btn {
+/* Custom Compare Tab Button in DHM Top Navigation */
+.dhm-compare-tab-btn {
   color: rgba(0, 0, 0, 0.87);
   background-color: rgb(255, 255, 255);
   transition: 450ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -24,7 +35,7 @@
   vertical-align: top;
 }
 
-.dhm-custom-tab-btn button {
+.dhm-compare-tab-btn button {
   border-width: 10px 0.5px 10px 10px;
   border-style: none solid none none;
   border-color: currentcolor lightgray currentcolor currentcolor;
@@ -36,15 +47,22 @@
   margin: 0px;
   padding: 0px;
   outline: none;
-  background-color: rgb(255, 255, 255);
+  font-size: inherit;
+  font-weight: inherit;
+  position: relative;
   height: 36px;
   line-height: 36px;
   width: 100%;
+  transition: 450ms cubic-bezier(0.23, 1, 0.32, 1);
+  background-color: rgb(255, 255, 255);
   text-align: center;
 }
 
-.dhm-custom-tab-btn button .tab-label {
+.dhm-compare-tab-btn button .tab-label {
+  position: relative;
+  opacity: 1;
   font-size: 12px;
+  letter-spacing: 0px;
   text-transform: uppercase;
   margin: 0px;
   user-select: none;
@@ -58,20 +76,23 @@
   gap: 6px;
 }
 
-.dhm-custom-tab-btn.active button {
+/* Active State */
+.dhm-compare-tab-btn.active button {
   background-color: rgb(15, 114, 169) !important;
 }
 
-.dhm-custom-tab-btn.active button .tab-label {
+.dhm-compare-tab-btn.active button .tab-label {
   color: rgb(255, 255, 255) !important;
 }
 
+/* Live Pulse Badge on Tab */
 .dhm-tab-pulse-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 8px;
   height: 8px;
+  background-color: #f59e0b;
   border-radius: 50%;
   position: relative;
 }
@@ -92,9 +113,9 @@
   100% { transform: scale(0.8); opacity: 1; }
 }
 
-/* =============================================================
-   COMPARE TAB STYLES
-   ============================================================= */
+/* -------------------------------------------------------------
+   Compare Tab Container
+   ------------------------------------------------------------- */
 #dhm-compare-root {
   width: 100%;
   font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -103,6 +124,7 @@
   box-sizing: border-box;
 }
 
+/* Top Header Bar */
 .cmp-header-panel {
   background: #ffffff;
   border-radius: 4px;
@@ -122,9 +144,10 @@
 .cmp-header-panel p {
   margin: 0;
   font-size: 12.5px;
-  color: var(--dhm-text-muted);
+  color: #64748b;
 }
 
+/* Compare Table */
 .cmp-table-container {
   background: #ffffff;
   border-radius: 4px;
@@ -141,7 +164,7 @@
 
 .cmp-table th, .cmp-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid var(--dhm-border);
+  border-bottom: 1px solid #e2e8f0;
   vertical-align: middle;
 }
 
@@ -151,7 +174,7 @@
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 2px solid var(--dhm-border);
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .cmp-warn-header {
@@ -182,14 +205,14 @@
 
 .cmp-station-name {
   font-weight: 700;
-  color: var(--dhm-primary);
+  color: #0f72a9;
   font-size: 13px;
   margin-bottom: 2px;
 }
 
 .cmp-basin {
   font-size: 10.5px;
-  color: var(--dhm-text-muted);
+  color: #64748b;
 }
 
 .cmp-empty {
@@ -199,29 +222,7 @@
   background: #f8fafc;
 }
 
-/* Loading Spinner */
-.cmp-loading-state {
-  text-align: center;
-  padding: 60px 20px;
-}
-
-.cmp-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid var(--dhm-border);
-  border-top-color: var(--dhm-primary);
-  border-radius: 50%;
-  animation: cmp-spin 0.8s linear infinite;
-  margin: 0 auto 16px auto;
-}
-
-@keyframes cmp-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* =============================================================
-   TREND & STATUS BADGES
-   ============================================================= */
+/* Trend Badges */
 .dhm-trend-badge {
   display: inline-flex;
   align-items: center;
@@ -230,27 +231,36 @@
   border-radius: 12px;
   font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.3px;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
 }
 
 .dhm-trend-rising {
-  background: #fee2e2;
-  color: #b91c1c;
-  border: 1px solid #fca5a5;
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+  animation: dhm-pulse-rising 2s infinite ease-in-out;
+}
+
+@keyframes dhm-pulse-rising {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15); }
 }
 
 .dhm-trend-falling {
-  background: #e0f2fe;
-  color: #0284c7;
-  border: 1px solid #7dd3fc;
+  background: #e0f2fe !important;
+  color: #0284c7 !important;
+  border: 1px solid #7dd3fc !important;
 }
 
 .dhm-trend-steady {
-  background: #ecfdf5;
-  color: #059669;
-  border: 1px solid #a7f3d0;
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+  border: 1px solid #a7f3d0 !important;
 }
 
+/* Status Column with Warning & Danger Level Differences */
 .dhm-status-cell-wrapper {
   display: flex;
   flex-direction: column;
@@ -263,15 +273,39 @@
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
   padding: 2px 6px;
   border-radius: 4px;
   display: inline-block;
   white-space: nowrap;
 }
 
-.dhm-status-main.status-normal { color: #065f46; background-color: #d1fae5; }
-.dhm-status-main.status-warning { color: #9a3412; background-color: #ffedd5; }
-.dhm-status-main.status-danger { color: #991b1b; background-color: #fee2e2; }
+.dhm-status-main.status-normal {
+  color: #065f46;
+  background-color: #d1fae5;
+}
+
+.dhm-status-main.status-warning {
+  color: #9a3412;
+  background-color: #ffedd5;
+  animation: dhm-pulse-warn 2s infinite;
+}
+
+@keyframes dhm-pulse-warn {
+  0%, 100% { background-color: #ffedd5; }
+  50% { background-color: #fed7aa; }
+}
+
+.dhm-status-main.status-danger {
+  color: #991b1b;
+  background-color: #fee2e2;
+  animation: dhm-pulse-danger 1.5s infinite;
+}
+
+@keyframes dhm-pulse-danger {
+  0%, 100% { background-color: #fee2e2; }
+  50% { background-color: #fca5a5; }
+}
 
 .dhm-diff-badges {
   display: flex;
@@ -282,23 +316,55 @@
 
 .dhm-diff-badge {
   display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 2px 7px;
   border-radius: 10px;
   font-size: 10.5px;
   font-weight: 700;
   font-family: monospace;
   white-space: nowrap;
+  letter-spacing: -0.2px;
 }
 
-.dhm-diff-warn-gap { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
-.dhm-diff-dang-gap { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-.dhm-diff-danger-near { background-color: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
-.dhm-diff-danger-exceeded { background-color: #fee2e2; color: #dc2626; border: 1px solid #f87171; }
-.dhm-diff-warning-exceeded { background-color: #fef3c7; color: #d97706; border: 1px solid #fcd34d; }
+/* Below Warning: Warning Level Buffer Gap */
+.dhm-diff-warn-gap {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
 
-/* =============================================================
-   FLOATING TOGGLE WIDGET
-   ============================================================= */
+/* Below Warning: Danger Level Buffer Gap */
+.dhm-diff-dang-gap {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+/* Crossed Warning, Nearing Danger */
+.dhm-diff-danger-near {
+  background-color: #ffedd5;
+  color: #c2410c;
+  border: 1px solid #fdba74;
+  font-weight: 800;
+}
+
+/* Crossed Danger Level (Exceeded) */
+.dhm-diff-danger-exceeded {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #f87171;
+  font-weight: 800;
+  animation: dhm-pulse-rising 1.5s infinite;
+}
+
+.dhm-diff-warning-exceeded {
+  background-color: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fcd34d;
+}
+
+/* Floating Webpage Extension Toggle Widget */
 #dhm-floating-toggle-widget {
   position: fixed;
   bottom: 20px;
@@ -328,7 +394,8 @@
   gap: 5px;
   font-size: 12px;
   font-weight: 700;
-  color: #b45309;
+  color: #0f72a9;
+  cursor: pointer;
 }
 
 #dhm-floating-toggle-widget .dhm-widget-switch {
@@ -385,6 +452,7 @@
   min-width: 28px;
 }
 
+/* Floating Widget Countdown Chip */
 .dhm-widget-timer-chip {
   display: inline-flex;
   align-items: center;
@@ -399,11 +467,16 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   cursor: pointer;
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .dhm-widget-timer-chip:hover {
   background: #15803d;
   color: #ffffff;
+}
+
+.dhm-widget-timer-chip:active {
+  transform: scale(0.95);
 }
 
 #dhm-floating-toggle-widget.is-disabled {
@@ -412,6 +485,92 @@
   opacity: 0.85;
 }
 
-#dhm-floating-toggle-widget.is-disabled .dhm-widget-brand { color: #64748b; }
-#dhm-floating-toggle-widget.is-disabled .dhm-widget-status { color: #64748b; }
-#dhm-floating-toggle-widget.is-disabled .dhm-widget-timer-chip { display: none; }
+#dhm-floating-toggle-widget.is-disabled .dhm-widget-brand {
+  color: #64748b;
+}
+
+#dhm-floating-toggle-widget.is-disabled .dhm-widget-status {
+  color: #64748b;
+}
+
+#dhm-floating-toggle-widget.is-disabled .dhm-widget-timer-chip {
+  display: none;
+}
+
+/* Loading Spinner */
+.dw-loading-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.dw-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top-color: var(--dhm-primary);
+  border-radius: 50%;
+  animation: dw-spin 0.8s linear infinite;
+  margin: 0 auto 16px auto;
+}
+
+@keyframes dw-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* River Trend Change Alert Toast */
+.dhm-toast-trend-change {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #7f1d1d;
+  color: #ffffff;
+  padding: 14px 22px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 9999999;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  animation: dhmToastSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 2px solid #ef4444;
+  pointer-events: none;
+}
+
+@keyframes dhmToastSlideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.dhm-toast-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dhm-toast-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fecaca;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.dhm-toast-msg {
+  font-size: 13px;
+  color: #ffffff;
+  margin-top: 2px;
+}
+
+.dhm-toast-sub {
+  font-size: 11px;
+  color: #fca5a5;
+  margin-top: 2px;
+  font-style: italic;
+}

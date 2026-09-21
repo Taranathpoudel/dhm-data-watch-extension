@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DHM Data Watch & River Watch</title>
+  <title>DHM Station Compare</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,10 +11,10 @@
     <!-- Header -->
     <div class="popup-header">
       <div class="popup-brand">
-        <div class="popup-logo">🌊</div>
+        <div class="popup-logo">📊</div>
         <div>
-          <h1 class="popup-title">DHM Hydrology Watch</h1>
-          <div class="popup-subtitle">River Trends & 10-Min Telemetry</div>
+          <h1 class="popup-title">DHM Station Compare</h1>
+          <div class="popup-subtitle">Top 5 Near Warning vs Rising</div>
         </div>
       </div>
       <div class="popup-header-right">
@@ -35,23 +35,7 @@
       <span class="clock-time" id="pop-clock">--:--:-- --</span>
     </div>
 
-    <!-- Auto-Refresh Status Card -->
-    <div class="popup-autorefresh-card">
-      <div class="pop-ar-left">
-        <span class="pop-ar-icon">⏱️</span>
-        <div>
-          <div class="pop-ar-title">5-Min Auto Data Refresh</div>
-          <div class="pop-ar-sub">Updates data without page reload</div>
-        </div>
-      </div>
-      <div class="pop-ar-right">
-        <button class="pop-ar-refresh-btn" id="pop-btn-refresh-now" title="Refresh data on active DHM tab now">
-          <span>🔄 Refresh Data</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Trend Telemetry Summary -->
+    <!-- Trend Summary -->
     <div class="popup-section-title">River Watch Trends</div>
     <div class="popup-stats-grid popup-trend-grid">
       <div class="stat-box stat-rising" id="box-filter-rising" title="Click to filter Rising river stations">
@@ -68,23 +52,6 @@
       </div>
     </div>
 
-    <!-- 10-Min Telemetry Summary -->
-    <div class="popup-section-title">10-Minute Reporting Status</div>
-    <div class="popup-stats-grid">
-      <div class="stat-box stat-delayed" id="box-filter-delayed">
-        <span class="stat-val" id="stat-delayed-count">--</span>
-        <span class="stat-lbl">⚠️ Delayed (>10m)</span>
-      </div>
-      <div class="stat-box stat-critical" id="box-filter-critical">
-        <span class="stat-val" id="stat-critical-count">--</span>
-        <span class="stat-lbl">🚨 Critical (>1h)</span>
-      </div>
-      <div class="stat-box stat-normal" id="box-filter-normal">
-        <span class="stat-val" id="stat-normal-count">--</span>
-        <span class="stat-lbl">✅ On-Time (≤10m)</span>
-      </div>
-    </div>
-
     <!-- Quick Search -->
     <div class="popup-search">
       <input type="text" id="pop-search-input" placeholder="🔍 Quick search station name, basin, trend...">
@@ -97,14 +64,8 @@
 
     <!-- Action Buttons -->
     <div class="popup-footer">
-      <button class="btn-open-site btn-compare" id="btn-open-compare" style="background:#f59e0b; margin-bottom: 4px;">
+      <button class="btn-open-site btn-compare" id="btn-open-compare">
         <span>📊 Open Quick Compare (Top 5)</span>
-      </button>
-      <button class="btn-open-site btn-river-watch" id="btn-open-river-watch">
-        <span>🌊 Open River Watch (Trend Sorter)</span>
-      </button>
-      <button class="btn-open-site btn-data-watch" id="btn-open-data-watch">
-        <span>📡 Open Data Watch (10-Min Telemetry)</span>
       </button>
     </div>
   </div>

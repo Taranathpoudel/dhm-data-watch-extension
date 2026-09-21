@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "DHM Hydrology - Data Watch & River Watch Trend Sorter",
-  "version": "1.2.0",
-  "description": "Auto-refreshes DHM Hydrology every 5 minutes with default River Watch Rising view, 10-min telemetry monitoring, and interactive flood trend sorters.",
+  "name": "DHM Hydrology - Compare Stations",
+  "version": "1.3.0",
+  "description": "Compare top 5 stations near warning level vs top 5 rising stations on DHM Hydrology.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -15,7 +15,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "DHM Data Watch & River Watch Telemetry"
+    "default_title": "DHM Compare Stations"
   },
   "background": {
     "service_worker": "src/background.js"
@@ -39,7 +39,7 @@
         "src/content.js"
       ],
       "css": [
-        "src/data-watch.css"
+        "src/compare.css"
       ],
       "run_at": "document_idle"
     }
@@ -47,7 +47,7 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/data-watch.css",
+        "src/compare.css",
         "icons/*"
       ],
       "matches": [

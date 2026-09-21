@@ -1,32 +1,29 @@
-// Background service worker for DHM Data Watch & River Watch
+// Background service worker for DHM Station Compare
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("DHM Data Watch extension installed / updated");
+  console.log("DHM Station Compare extension installed / updated");
   // Set default storage values if not present
   chrome.storage.local.get({
     extensionEnabled: true,
     autoRefreshInterval: 300,
     autoRefreshEnabled: true,
-    autoNavigateRiverWatch: true,
-    autoClickRising: true
+    autoNavigateCompare: true
   }, (res) => {
     chrome.storage.local.set(res);
   });
 });
 
-// Periodic telemetry polling alarm (every 2 min)
+// Periodic telemetry polling alarm
 chrome.alarms.create("dhm_poll_alarm", { periodInMinutes: 2 });
 
-// Auto-refresh data alarm (every 5 min) - updates data without page reload
+// 5-minute auto-refresh background alarm
 chrome.alarms.create("dhm_autorefresh_5min_alarm", { periodInMinutes: 5 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "dhm_poll_alarm") {
-    // Check delayed stations count and update extension badge
     fetch("https://hydrology.gov.np/gss/socket.io/?EIO=3&transport=polling&t=" + Date.now())
       .then(r => r.text())
       .catch(() => {});
   } else if (alarm.name === "dhm_autorefresh_5min_alarm") {
-    // Broadcast auto-refresh to hydrology tabs (data update only, no page reload)
     chrome.storage.local.get({ extensionEnabled: true, autoRefreshEnabled: true }, (res) => {
       if (res.extensionEnabled !== false && res.autoRefreshEnabled !== false) {
         chrome.tabs.query({ url: ["https://hydrology.gov.np/*", "http://hydrology.gov.np/*"] }, (tabs) => {

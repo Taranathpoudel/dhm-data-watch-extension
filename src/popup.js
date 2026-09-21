@@ -3,35 +3,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentFilter = "all";
   let extensionEnabled = true;
 
-  // Extension toggle element references
   const extensionToggle = document.getElementById("pop-extension-toggle");
   const toggleStatusLabel = document.getElementById("pop-toggle-status");
-
-/* ... KEEP EXISTING CODE EXCEPT FOR ADDING btn-open-compare EVENT LISTENER ... */
-
-// (Inside document.addEventListener("DOMContentLoaded", () => { ... }))
-
-  // Open site buttons
-  const cmpBtn = document.getElementById("btn-open-compare");
-  if (cmpBtn) {
-    cmpBtn.addEventListener("click", () => {
-      chrome.tabs.create({ url: "https://hydrology.gov.np/#/compare" });
-    });
-  }
-
-  const rwBtn = document.getElementById("btn-open-river-watch");
-  if (rwBtn) {
-    rwBtn.addEventListener("click", () => {
-      chrome.tabs.create({ url: "https://hydrology.gov.np/#/river_watch" });
-    });
-  }
-
-  const dwBtn = document.getElementById("btn-open-data-watch");
-  if (dwBtn) {
-    dwBtn.addEventListener("click", () => {
-      chrome.tabs.create({ url: "https://hydrology.gov.np/#/data_watch" });
-    });
-  }
 
   function updateToggleUI(enabled) {
     extensionEnabled = enabled;
@@ -46,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Load stored extension toggle state
   if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get({ extensionEnabled: true }, (res) => {
       updateToggleUI(res.extensionEnabled);
@@ -60,7 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ extensionEnabled: isEnabled }, () => {
-          // Send message to active tabs
           chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs && tabs[0] && tabs[0].id) {
               chrome.tabs.sendMessage(tabs[0].id, {
@@ -107,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       };
 
-      await Promise.all([sendReq("river_test"), sendReq("rainfall_watch")]);
+      await Promise.all([sendReq("river_test")]);
 
       setTimeout(async () => {
         const pRes = await fetch("https://hydrology.gov.np/gss/socket.io/?EIO=3&transport=polling&sid=" + sid + "&t=" + Date.now());
@@ -122,7 +93,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function parseAndRender(raw) {
     let riverData = [];
-    let rainfallData = [];
 
     let i = 0;
     while (i < raw.length) {
@@ -135,23 +105,14 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const parsed = JSON.parse(payload.substring(2));
           if (parsed[0] === "river_test" || parsed[0] === "river_watch") riverData = parsed[1] || [];
-          if (parsed[0] === "rainfall_watch") rainfallData = parsed[1] || [];
         } catch(e) {}
       }
       i = colon + 1 + len;
     }
 
     const stMap = new Map();
-    const now = Date.now();
 
     riverData.forEach(r => {
-      let delay = Infinity;
-      let timeStr = "";
-      if (r.waterLevel && r.waterLevel.datetime) {
-        timeStr = r.waterLevel.datetime;
-        delay = Math.max(0, Math.floor((now - new Date(timeStr).getTime()) / 60000));
-      }
-
       const wl = r.waterLevel && !isNaN(parseFloat(r.waterLevel.value)) ? parseFloat(r.waterLevel.value) : null;
       const warn = parseFloat(r.warning_level);
       const dang = parseFloat(r.danger_level);
@@ -163,68 +124,18 @@ document.addEventListener("DOMContentLoaded", () => {
         name: r.name,
         basin: r.basin || "Other",
         district: r.district || "",
-        latestTime: timeStr,
-        delayMinutes: delay,
         trend: (r.steady || "").toUpperCase(),
         waterLevel: wl,
-        warningLevel: isNaN(warn) ? null : warn,
-        dangerLevel: isNaN(dang) ? null : dang,
         diffWarning: diffWarn,
-        diffDanger: diffDang,
-        status: r.status || "",
-        type: "River"
+        diffDanger: diffDang
       });
     });
 
-    rainfallData.forEach(rf => {
-      let delay = Infinity;
-      let timeStr = "";
-      if (rf.latest_observation && rf.latest_observation.datetime) {
-        timeStr = rf.latest_observation.datetime;
-        delay = Math.max(0, Math.floor((now - new Date(timeStr).getTime()) / 60000));
-      }
-      const existing = stMap.get(rf.id);
-      if (existing) {
-        if (delay < existing.delayMinutes) {
-          existing.delayMinutes = delay;
-          existing.latestTime = timeStr;
-        }
-        existing.type = "WL + Rain";
-      } else {
-        stMap.set(rf.id, {
-          id: rf.id,
-          name: rf.name,
-          basin: rf.basin || "Other",
-          district: rf.district || "",
-          latestTime: timeStr,
-          delayMinutes: delay,
-          trend: "",
-          waterLevel: null,
-          warningLevel: null,
-          dangerLevel: null,
-          diffWarning: null,
-          diffDanger: null,
-          status: rf.status || "",
-          type: "Rainfall"
-        });
-      }
-    });
-
     stations = Array.from(stMap.values());
-    stations.sort((a, b) => b.delayMinutes - a.delayMinutes);
-
-    // Calculate metrics
-    const delayed = stations.filter(s => s.delayMinutes > 10).length;
-    const critical = stations.filter(s => s.delayMinutes > 60 && s.delayMinutes < Infinity).length;
-    const normal = stations.filter(s => s.delayMinutes <= 10).length;
 
     const rising = stations.filter(s => s.trend === "RISING").length;
     const falling = stations.filter(s => s.trend === "FALLING").length;
     const steady = stations.filter(s => s.trend === "STEADY").length;
-
-    document.getElementById("stat-delayed-count").textContent = delayed;
-    document.getElementById("stat-critical-count").textContent = critical;
-    document.getElementById("stat-normal-count").textContent = normal;
 
     document.getElementById("stat-rising-count").textContent = rising;
     document.getElementById("stat-falling-count").textContent = falling;
@@ -237,19 +148,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const listEl = document.getElementById("pop-station-list");
     let filtered = stations;
 
-    if (currentFilter === "rising") {
-      filtered = filtered.filter(s => s.trend === "RISING");
-    } else if (currentFilter === "falling") {
-      filtered = filtered.filter(s => s.trend === "FALLING");
-    } else if (currentFilter === "steady") {
-      filtered = filtered.filter(s => s.trend === "STEADY");
-    } else if (currentFilter === "delayed") {
-      filtered = filtered.filter(s => s.delayMinutes > 10);
-    } else if (currentFilter === "critical") {
-      filtered = filtered.filter(s => s.delayMinutes > 60);
-    } else if (currentFilter === "normal") {
-      filtered = filtered.filter(s => s.delayMinutes <= 10);
-    }
+    if (currentFilter === "rising") filtered = filtered.filter(s => s.trend === "RISING");
+    else if (currentFilter === "falling") filtered = filtered.filter(s => s.trend === "FALLING");
+    else if (currentFilter === "steady") filtered = filtered.filter(s => s.trend === "STEADY");
 
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase().trim();
@@ -267,47 +168,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     listEl.innerHTML = filtered.slice(0, 35).map(s => {
-      let badge = "";
-      if (s.delayMinutes <= 10) {
-        badge = "<span class=\"pop-badge pop-badge-normal\">" + (s.delayMinutes === 0 ? "Just now" : s.delayMinutes + "m ago") + "</span>";
-      } else if (s.delayMinutes <= 60) {
-        badge = "<span class=\"pop-badge pop-badge-delayed\">" + s.delayMinutes + "m overdue</span>";
-      } else if (s.delayMinutes < Infinity) {
-        const h = Math.floor(s.delayMinutes / 60);
-        badge = "<span class=\"pop-badge pop-badge-critical\">" + h + "h overdue</span>";
-      } else {
-        badge = "<span class=\"pop-badge pop-badge-critical\">Offline</span>";
-      }
-
       let trendBadge = "";
-      if (s.trend === "RISING") {
-        trendBadge = "<span class=\"pop-trend-badge pop-trend-rising\">📈 RISING</span>";
-      } else if (s.trend === "FALLING") {
-        trendBadge = "<span class=\"pop-trend-badge pop-trend-falling\">📉 FALLING</span>";
-      } else if (s.trend === "STEADY") {
-        trendBadge = "<span class=\"pop-trend-badge pop-trend-steady\">➡️ STEADY</span>";
-      }
+      if (s.trend === "RISING") trendBadge = "<span class=\"pop-trend-badge pop-trend-rising\">📈 RISING</span>";
+      else if (s.trend === "FALLING") trendBadge = "<span class=\"pop-trend-badge pop-trend-falling\">📉 FALLING</span>";
+      else if (s.trend === "STEADY") trendBadge = "<span class=\"pop-trend-badge pop-trend-steady\">➡️ STEADY</span>";
 
-      // Warning / Danger difference snippet
       let diffSnippet = "";
-      if (s.waterLevel !== null) {
-        if (s.diffWarning !== null) {
-          if (s.diffWarning > 0) {
-            // Crossed warning level -> show diff to danger level
-            if (s.diffDanger !== null) {
-              if (s.diffDanger > 0) {
-                diffSnippet = ` &bull; <span style="color:#dc2626; font-weight:700;">🚨 +${s.diffDanger.toFixed(2)}m above Danger</span>`;
-              } else {
-                diffSnippet = ` &bull; <span style="color:#d97706; font-weight:700;">⚠️ ${Math.abs(s.diffDanger).toFixed(2)}m to Danger</span>`;
-              }
-            } else {
-              diffSnippet = ` &bull; <span style="color:#d97706; font-weight:700;">⚠️ +${s.diffWarning.toFixed(2)}m above Warn</span>`;
-            }
+      if (s.waterLevel !== null && s.diffWarning !== null) {
+        if (s.diffWarning > 0) {
+          if (s.diffDanger !== null) {
+            if (s.diffDanger > 0) diffSnippet = ` &bull; <span style="color:#dc2626; font-weight:700;">🚨 +${s.diffDanger.toFixed(2)}m above Danger</span>`;
+            else diffSnippet = ` &bull; <span style="color:#d97706; font-weight:700;">⚠️ ${Math.abs(s.diffDanger).toFixed(2)}m to Danger</span>`;
           } else {
-            // Below warning level
-            const gapWarn = Math.abs(s.diffWarning).toFixed(2);
-            diffSnippet = ` &bull; <span style="color:#059669; font-weight:600;">-${gapWarn}m to Warn</span>`;
+            diffSnippet = ` &bull; <span style="color:#d97706; font-weight:700;">⚠️ +${s.diffWarning.toFixed(2)}m above Warn</span>`;
           }
+        } else {
+          diffSnippet = ` &bull; <span style="color:#059669; font-weight:600;">-${Math.abs(s.diffWarning).toFixed(2)}m to Warn</span>`;
         }
       }
 
@@ -316,12 +192,10 @@ document.addEventListener("DOMContentLoaded", () => {
           "<div class=\"pop-item-name\">" + escapeHtml(s.name) + " " + trendBadge + "</div>" +
           "<div class=\"pop-item-sub\">" + escapeHtml(s.basin) + " &bull; " + escapeHtml(s.district) + (s.waterLevel !== null ? " &bull; <b>" + s.waterLevel + "m</b>" : "") + diffSnippet + "</div>" +
         "</div>" +
-        badge +
       "</div>";
     }).join("");
   }
 
-  // Search input
   const searchInput = document.getElementById("pop-search-input");
   if (searchInput) {
     searchInput.addEventListener("input", (e) => {
@@ -329,7 +203,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Quick stat filter cards
   const addFilterClick = (id, filterName) => {
     const el = document.getElementById(id);
     if (el) {
@@ -345,31 +218,11 @@ document.addEventListener("DOMContentLoaded", () => {
   addFilterClick("box-filter-rising", "rising");
   addFilterClick("box-filter-falling", "falling");
   addFilterClick("box-filter-steady", "steady");
-  addFilterClick("box-filter-delayed", "delayed");
-  addFilterClick("box-filter-critical", "critical");
-  addFilterClick("box-filter-normal", "normal");
 
-  // Refresh Now button in popup
-  const refreshNowBtn = document.getElementById("pop-btn-refresh-now");
-  if (refreshNowBtn) {
-    refreshNowBtn.addEventListener("click", () => {
-      refreshNowBtn.textContent = "⏳ Refreshing data...";
-      if (typeof chrome !== "undefined" && chrome.tabs) {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs && tabs[0] && tabs[0].id) {
-            const url = tabs[0].url || "";
-            if (url.includes("hydrology.gov.np")) {
-              chrome.tabs.sendMessage(tabs[0].id, { action: "TRIGGER_5MIN_AUTO_REFRESH" }).then(() => {
-                refreshNowBtn.textContent = "🔄 Refresh Data";
-              }).catch(() => {
-                refreshNowBtn.textContent = "🔄 Refresh Data";
-              });
-              return;
-            }
-          }
-          refreshNowBtn.textContent = "🔄 Refresh Data";
-        });
-      }
+  const cmpBtn = document.getElementById("btn-open-compare");
+  if (cmpBtn) {
+    cmpBtn.addEventListener("click", () => {
+      chrome.tabs.create({ url: "https://hydrology.gov.np/#/compare" });
     });
   }
 
