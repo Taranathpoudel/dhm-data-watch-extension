@@ -1893,12 +1893,77 @@ table.watch_table tbody tr.watch_table_tr:hover {
 }
 
 /* ==========================================================================
-   4. Blue / Cyan Flex Type - Rising Stations Flex & Dedicated Table
+   4. Blue / Cyan Flex Type - Rising Stations Flex & Dedicated Table (Draggable Popup)
    ========================================================================== */
 .dhm-rw-rising-flex-container {
   width: 100%;
-  margin: 10px 0 14px 0;
+  margin: 0;
   box-sizing: border-box;
+}
+
+/* Floating Draggable Popup Window */
+.dhm-hazard-flex-rising.dhm-rising-popup-window {
+  position: fixed;
+  top: 100px;
+  right: 24px;
+  width: 820px;
+  max-width: calc(100vw - 32px);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px 14px 16px;
+  background-color: #ffffff;
+  border: 2px solid #0284c7;
+  border-top: 5px solid #0369a1;
+  border-radius: 10px;
+  color: #0c4a6e;
+  box-shadow: 0 12px 32px rgba(2, 132, 199, 0.22), 0 4px 12px rgba(0, 0, 0, 0.12);
+  animation: dhm-fade-in 0.3s ease;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s ease, width 0.2s ease;
+}
+
+.dhm-hazard-flex-rising.dhm-rising-popup-window.is-minimized {
+  width: 420px;
+  padding-bottom: 12px;
+}
+
+.dhm-rising-popup-drag-handle {
+  cursor: grab;
+  user-select: none;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e0f2fe;
+}
+
+.dhm-rising-popup-drag-handle:active {
+  cursor: grabbing;
+}
+
+.dhm-drag-grip-icon {
+  font-size: 16px;
+  color: #0284c7;
+  cursor: grab;
+  margin-right: 2px;
+  opacity: 0.8;
+  font-weight: bold;
+}
+
+.dhm-hf-close-btn {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dhm-hf-close-btn:hover {
+  background: #dc2626;
+  color: #ffffff;
 }
 
 .dhm-hazard-flex-rising {
