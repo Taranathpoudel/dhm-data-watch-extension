@@ -71,7 +71,13 @@
     originalOrderMap: new WeakMap(),
     cachedRows: [],
     lastTableRef: null,
-    reapplyTimer: null
+    reapplyTimer: null,
+    popupPosition: {
+      left: null,
+      top: null,
+      isMinimized: false,
+      isClosed: false
+    }
   };
 
   /* ==========================================================================
@@ -388,30 +394,127 @@
    * Displayed inside the Near Exceeding / Warning tab view so hydrologists can monitor
    * near/exceeding warning stations and all rising water level stations simultaneously.
    */
+  function makePopupDraggable(popupEl, handleEl) {
+    if (!popupEl || !handleEl) return;
+    if (handleEl.getAttribute("data-dhm-draggable-init") === "true") return;
+    handleEl.setAttribute("data-dhm-draggable-init", "true");
+
+    let isDragging = false;
+    let startX = 0, startY = 0;
+    let initialLeft = 0, initialTop = 0;
+
+    const startDrag = (clientX, clientY, target) => {
+      if (target.closest("button, input, select, a, .dhm-hf-no-drag")) return false;
+
+      isDragging = true;
+      handleEl.style.cursor = "grabbing";
+
+      const rect = popupEl.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+
+      startX = clientX;
+      startY = clientY;
+
+      return true;
+    };
+
+    const doDrag = (clientX, clientY) => {
+      if (!isDragging) return;
+      const deltaX = clientX - startX;
+      const deltaY = clientY - startY;
+
+      let newLeft = initialLeft + deltaX;
+      let newTop = initialTop + deltaY;
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const popupWidth = popupEl.offsetWidth;
+      const popupHeight = popupEl.offsetHeight;
+
+      newLeft = Math.max(10, Math.min(viewportWidth - popupWidth - 10, newLeft));
+      newTop = Math.max(10, Math.min(viewportHeight - popupHeight - 10, newTop));
+
+      popupEl.style.left = newLeft + "px";
+      popupEl.style.top = newTop + "px";
+      popupEl.style.right = "auto";
+      popupEl.style.bottom = "auto";
+
+      riverWatchState.popupPosition.left = newLeft + "px";
+      riverWatchState.popupPosition.top = newTop + "px";
+    };
+
+    const endDrag = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      handleEl.style.cursor = "grab";
+    };
+
+    handleEl.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      if (startDrag(e.clientX, e.clientY, e.target)) {
+        const onMouseMove = (moveEvt) => doDrag(moveEvt.clientX, moveEvt.clientY);
+        const onMouseUp = () => {
+          endDrag();
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        };
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      }
+    });
+
+    handleEl.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        if (startDrag(touch.clientX, touch.clientY, e.target)) {
+          const onTouchMove = (moveEvt) => {
+            if (moveEvt.touches.length === 1) {
+              doDrag(moveEvt.touches[0].clientX, moveEvt.touches[0].clientY);
+            }
+          };
+          const onTouchEnd = () => {
+            endDrag();
+            document.removeEventListener("touchmove", onTouchMove);
+            document.removeEventListener("touchend", onTouchEnd);
+          };
+          document.addEventListener("touchmove", onTouchMove, { passive: true });
+          document.addEventListener("touchend", onTouchEnd);
+        }
+      }
+    }, { passive: true });
+  }
+
   function renderRisingStationsFlexHtml(risingStations = []) {
     const count = risingStations.length;
     const hasStations = count > 0;
+    const pos = riverWatchState.popupPosition;
+
+    const customPosStyle = (pos.left && pos.top) ? `left: ${pos.left}; top: ${pos.top}; right: auto; bottom: auto;` : "";
 
     return `
-      <div class="dhm-hazard-flex dhm-hazard-flex-rising" id="dhm-hazard-rising-flex">
-        <div class="dhm-hf-header">
+      <div class="dhm-hazard-flex dhm-hazard-flex-rising dhm-rising-popup-window ${pos.isMinimized ? "is-minimized" : ""}" id="dhm-hazard-rising-flex" style="${customPosStyle}">
+        <div class="dhm-hf-header dhm-rising-popup-drag-handle" id="dhm-rising-popup-header">
           <div class="dhm-hf-title-group">
+            <span class="dhm-drag-grip-icon" title="Click and drag to reposition popup on screen">⋮⋮</span>
             <span class="dhm-hf-icon">📈</span>
             <span class="dhm-hf-title">Rising Water Level Stations</span>
             <span class="dhm-hf-badge">${count} ${count === 1 ? "Station" : "Stations"} Rising</span>
           </div>
-          <div class="dhm-hf-actions">
-            <span class="dhm-hf-desc">Active Flood Trend: Telemetry stations currently reporting rising river levels</span>
+          <div class="dhm-hf-actions dhm-hf-no-drag">
             <button type="button" class="dhm-hf-btn-rising" id="dhm-rw-goto-rising-btn" title="Switch main table view to show only Rising stations">
               <span>📈 View Main Rising Tab</span>
             </button>
             <button type="button" class="dhm-hf-collapse-btn" id="dhm-rw-toggle-rising-btn" title="Collapse or Expand Rising Stations Table">
-              <span>▼ Collapse Table</span>
+              <span>${pos.isMinimized ? "▲ Expand" : "▼ Collapse"}</span>
+            </button>
+            <button type="button" class="dhm-hf-close-btn" id="dhm-rw-close-rising-btn" title="Close Rising Stations Popup">
+              <span>✕</span>
             </button>
           </div>
         </div>
 
-        <div class="dhm-rising-table-wrapper" id="dhm-rising-table-wrapper">
+        <div class="dhm-rising-table-wrapper ${pos.isMinimized ? "collapsed" : ""}" id="dhm-rising-table-wrapper">
           ${!hasStations ? `
             <div class="dhm-rising-empty-state">
               <span style="font-size:22px;">🟢</span>
@@ -1802,8 +1905,8 @@
         </div>
       </div>
 
-      <!-- Separate Flex Container for Rising Stations Table (Shown in Near Exceeding / Warning tab) -->
-      <div class="dhm-rw-rising-flex-container" id="dhm-rw-rising-flex-wrapper" style="${riverWatchState.trendFilter === 'NEAR_WARNING' ? '' : 'display: none;'}">
+      <!-- Separate Draggable Popup Container for Rising Stations Table (Shown in Near Exceeding / Warning tab) -->
+      <div class="dhm-rw-rising-flex-container" id="dhm-rw-rising-flex-wrapper" style="${(riverWatchState.trendFilter === 'NEAR_WARNING' && !riverWatchState.popupPosition.isClosed) ? '' : 'display: none;'}">
         ${renderRisingStationsFlexHtml(stats.risingStations || [])}
       </div>
 
@@ -1877,6 +1980,7 @@
         const risingFlexWrapper = document.getElementById("dhm-rw-rising-flex-wrapper");
         if (risingFlexWrapper) {
           if (riverWatchState.trendFilter === "NEAR_WARNING") {
+            riverWatchState.popupPosition.isClosed = false;
             risingFlexWrapper.style.display = "";
           } else {
             risingFlexWrapper.style.display = "none";
@@ -1993,13 +2097,31 @@
       });
     });
 
-    // Rising stations flex - toggle collapse
+    // Draggable Rising Stations Popup Window
+    const popupEl = toolbar.querySelector("#dhm-hazard-rising-flex");
+    const dragHandleEl = toolbar.querySelector("#dhm-rising-popup-header");
+    if (popupEl && dragHandleEl) {
+      makePopupDraggable(popupEl, dragHandleEl);
+    }
+
+    // Close button for popup
+    const closeRisingBtn = toolbar.querySelector("#dhm-rw-close-rising-btn");
+    if (closeRisingBtn) {
+      closeRisingBtn.addEventListener("click", () => {
+        riverWatchState.popupPosition.isClosed = true;
+        const flexWrapper = document.getElementById("dhm-rw-rising-flex-wrapper");
+        if (flexWrapper) flexWrapper.style.display = "none";
+      });
+    }
+
+    // Toggle collapse/expand button
     const toggleRisingBtn = toolbar.querySelector("#dhm-rw-toggle-rising-btn");
     const risingTableWrapper = toolbar.querySelector("#dhm-rising-table-wrapper");
     if (toggleRisingBtn && risingTableWrapper) {
       toggleRisingBtn.addEventListener("click", () => {
         const isCollapsed = risingTableWrapper.classList.toggle("collapsed");
-        toggleRisingBtn.innerHTML = isCollapsed ? "<span>▲ Expand Table</span>" : "<span>▼ Collapse Table</span>";
+        riverWatchState.popupPosition.isMinimized = isCollapsed;
+        toggleRisingBtn.innerHTML = isCollapsed ? "<span>▲ Expand</span>" : "<span>▼ Collapse</span>";
       });
     }
 
@@ -2228,7 +2350,7 @@
       // Sync Rising Stations Flex visibility with active filter
       const risingFlexWrapper = document.getElementById("dhm-rw-rising-flex-wrapper");
       if (risingFlexWrapper) {
-        if (trendF === "NEAR_WARNING") {
+        if (trendF === "NEAR_WARNING" && !riverWatchState.popupPosition.isClosed) {
           risingFlexWrapper.style.display = "";
         } else {
           risingFlexWrapper.style.display = "none";
