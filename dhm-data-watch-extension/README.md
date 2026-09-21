@@ -6,7 +6,34 @@ A comprehensive Google Chrome Extension (Manifest V3) built for the **Department
 
 ## 🌟 Key Features
 
-### 1. 🌊 River Watch Table Enhancer & Hazard Level Differences (`#/river_watch`)
+### 1. ⏱️ 5-Minute Auto-Refresh & Default River Watch Near / Exceeding Warning Mode
+* **Automated 5-Minute Refresh Cycle**:
+  * Automatically reloads the DHM Hydrology portal every 5 minutes (300 seconds) to ensure telemetry and socket data are completely fresh and never stale.
+  * Supported by both a live in-tab high-precision countdown timer and a background service worker alarm (`dhm_autorefresh_5min_alarm`).
+* **Default Navigation to River Watch (`#/river_watch`)**:
+  * Immediately upon every page reload, refresh, or fresh visit, the extension automatically navigates to the **River Watch** view by triggering the tab routing.
+* **Automatic ⚠️ Near / Exceeding Warning Filter & Sort**:
+  * Once on River Watch, the extension automatically clicks the **[⚠️ Near / Exceeding Warning]** button (pill), filtering the table to show river observation stations approaching (within 1m) or exceeding warning thresholds, ranked closest to flood hazard first (`diff_warning_desc`).
+* **Dedicated Rising Stations Table in a Separate Flex Type**:
+  * Directly inside the **Near / Exceeding Warning** tab, a dedicated **Rising Stations Flex** container is displayed showcasing all stations currently reporting a **RISING (📈)** water level trend nationwide in a clean, interactive, scrollable table.
+  * Features instant station search, `[🔍 Locate]` button to highlight stations in the main table, `[▼ Collapse Table]` toggle, and `[📈 View Main Rising Tab]` shortcut.
+* **Live Visual Countdown & Instant Reload**:
+  * **River Watch Toolbar**: Live `⏱️ Auto-Refresh: mm:ss` countdown chip with an instant `[🔄]` reload button.
+  * **Floating Toggle Widget**: Shows `⏱️ mm:ss` countdown chip at the bottom-right corner of the screen.
+  * **Popup & Data Watch**: Live countdown display with 1-click tab reload.
+
+### 2. ⚡ Real-Time Trend Column Shift Detection & Early Reload (Before 5 Min)
+* **Continuous Trend Column Surveillance**:
+  * While on the River Watch page under the **Near / Exceeding Warning** or **Rising** sections, the extension continuously tracks the **Trend Column** for every rising station using a triple-layer detection system:
+    1. **DOM MutationObserver**: Detects instant changes inside `table.watch_table` cells.
+    2. **DOM Scanner (every 1.5s)**: Actively validates that all stations in the rising section remain in `RISING` status.
+    3. **Live Telemetry Poller (every 15s)**: Checks real-time socket streams from DHM.
+* **Early Page Reload on Trend Change (`RISING` → `FALLING` or `STEADY`)**:
+  * The moment any station that was previously rising switches to **FALLING (📉)** or **STEADY (➡️)**, the extension detects the change immediately.
+  * Displays a prominent red alert toast: `⚡ River Trend Change Detected! Station [Name] changed from RISING to FALLING/STEADY. Reloading River Watch page before 5 min...`
+  * Automatically reloads the page **immediately without waiting for the 5-minute timer** to ensure the user always sees an accurate, up-to-the-second rising stations list.
+
+### 3. 🌊 River Watch Table Enhancer & Hazard Level Differences (`#/river_watch`)
 * **Dynamic Warning & Danger Level Difference Display in Status Column**:
   * 🟢 **Below Warning Level**: Simultaneously displays the difference to Warning Level AND difference to Danger Level:
     * `⚠️ -X.XXm to Warning` (remaining safety buffer before warning)
@@ -37,6 +64,23 @@ A comprehensive Google Chrome Extension (Manifest V3) built for the **Department
     * `[🚨 Danger / Warning]` (Instant filter for active alert stations)
   * **Live Search**: Instant search across station name, Nepali name, index, basin, and district.
   * **1-Click CSV Export**: Download the currently sorted & filtered River Watch table (including exact Warning and Danger differences) as a CSV file.
+
+### 4. 🚨 Dynamic Hazard Level Alert Flexes (Warning, Danger & No Warning)
+* **Real-Time Level Exceeded Surveillance Flexes**:
+  * 🟡 **Warning Level Exceeded Flex (Yellow)**:
+    * Displays **ONLY** when one or more stations show water level exceeding the Warning Level threshold.
+    * Highlights active flood warning stations with custom interactive chips showing station name, basin, district, water level, warning threshold, and amount exceeded (`+X.XXm above Warning`).
+    * Click any station chip to instantly scroll, locate, and highlight that row in the table.
+    * Includes quick filter button: `[⚠️ Show Only Warning]`.
+  * 🔴 **Danger Level Exceeded Flex (Red)**:
+    * Displays **ONLY** when one or more stations show water level exceeding the Danger Level threshold.
+    * Highlights high-priority flood danger stations with interactive chips showing station name, basin, district, water level, danger threshold, and amount exceeded (`+X.XXm above Danger`).
+    * Click any station chip to smoothly navigate and highlight the row in the table.
+    * Includes quick filter button: `[🚨 Show Only Danger]`.
+  * 🟢 **No Warning Flex (Green)**:
+    * Displays **ONLY** when **no stations** are in warning or danger level nationwide.
+    * Features a sleek green flex banner showing `🟢 No Warning — All river observation stations are currently below warning levels.`
+  * Available across **River Watch** (`#/river_watch`), **Data Watch** (`#/data_watch`), and the **Extension Toolbar Popup**.
 
 ---
 

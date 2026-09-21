@@ -36,22 +36,36 @@
     districtFilter: "all",
     typeFilter: "all",
     sortBy: "delay_desc",
-    autoRefreshInterval: 60,
+    autoRefreshInterval: 300, // 5 minutes (300 seconds) by default
+    autoRefreshEnabled: true,
+    autoNavigateRiverWatch: true,
+    autoClickNearWarning: true,
+    autoClickRising: false,
+    hasAutoClickedDefaultTab: false,
+    hasAutoClickedRising: false,
+    nextRefreshTimestamp: null,
+    countdownTimer: null,
     autoRefreshTimer: null,
     clockTimer: null,
     isDataWatchActive: false,
     socketSid: null,
-    extensionEnabled: true
+    extensionEnabled: true,
+    // Rising Trend Change Detection variables
+    risingStationsBaseline: new Map(),
+    lastKnownRisingCount: null,
+    isReloadingDueToTrendChange: false,
+    trendWatchTimer: null,
+    telemetryPollTimer: null
   };
 
   /* ==========================================================================
      RIVER WATCH TABLE SORTER & FILTER STATE
      ========================================================================== */
   const riverWatchState = {
-    sortKey: "dhm_default", // "diff_warning_desc", "diff_warning_asc", "trend_rising", "trend_falling", "trend_steady", "waterlevel_desc", "waterlevel_asc", "warning_desc", "danger_desc", "status_desc", "station_asc", "station_desc", "basin_asc", "district_asc", "index_asc", "sn_asc", "dhm_default"
+    sortKey: "diff_warning_desc", // default: Warning Level Diff (Closest to Flood First / High Risk)
     activeColIndex: null,
     sortDirection: "asc",
-    trendFilter: "all",     // "all", "RISING", "FALLING", "STEADY", "ALERT", "NEAR_WARNING"
+    trendFilter: "NEAR_WARNING",     // default: Filter to Near / Exceeding Warning stations on reload
     searchQuery: "",
     isSorting: false,
     originalOrderMap: new WeakMap(),
@@ -241,6 +255,280 @@
         </div>
       </div>
     `;
+  }
+
+  /* ==========================================================================
+     HAZARD LEVEL ALERT FLEXES (WARNING, DANGER & NO WARNING)
+     ========================================================================== */
+  /**
+   * Renders Hazard Level Exceeded flexes:
+   * - Yellow flex for Warning Level Exceeded stations (displayed ONLY when >= 1 stations show warning level)
+   * - Red flex for Danger Level Exceeded stations (displayed ONLY when >= 1 stations show danger level)
+   * - Green flex showing "No Warning" (displayed ONLY when 0 stations are in warning or danger level)
+   */
+  function renderHazardFlexesHtml(dangerStations = [], warningStations = [], context = "river-watch") {
+    const hasDanger = dangerStations && dangerStations.length > 0;
+    const hasWarning = warningStations && warningStations.length > 0;
+
+    // Condition 1: When no stations are in warning or danger level -> Green flex with "No Warning"
+    if (!hasDanger && !hasWarning) {
+      return `
+        <div class="dhm-hazard-flex dhm-hazard-flex-nowarning" id="dhm-hazard-nowarning-flex">
+          <div class="dhm-hf-left">
+            <span class="dhm-hf-icon">🟢</span>
+            <div class="dhm-hf-content">
+              <span class="dhm-hf-title">No Warning</span>
+              <span class="dhm-hf-desc">&mdash; All river observation stations are currently below warning levels. Normal river flow nationwide.</span>
+            </div>
+          </div>
+          <div class="dhm-hf-status-pill status-safe">
+            <span>✅ Safe &bull; 0 Hazard Alerts</span>
+          </div>
+        </div>
+      `;
+    }
+
+    let html = "";
+
+    // Condition 2: When one or more stations show danger level -> Red flex
+    if (hasDanger) {
+      html += `
+        <div class="dhm-hazard-flex dhm-hazard-flex-danger" id="dhm-hazard-danger-flex">
+          <div class="dhm-hf-header">
+            <div class="dhm-hf-title-group">
+              <span class="dhm-hf-icon">🚨</span>
+              <span class="dhm-hf-title">Danger Level Exceeded</span>
+              <span class="dhm-hf-badge">${dangerStations.length} ${dangerStations.length === 1 ? "Station" : "Stations"}</span>
+            </div>
+            <div class="dhm-hf-actions">
+              <span class="dhm-hf-desc">Severe Flood Alert: Water level has crossed Danger threshold</span>
+              ${context === "river-watch" ? `
+                <button type="button" class="dhm-hf-filter-btn dhm-hf-btn-danger" data-filter="HAZARD_DANGER" title="Filter table to only show Danger Level exceeded stations">
+                  <span>🚨 Show Only Danger</span>
+                </button>
+              ` : ""}
+            </div>
+          </div>
+          <div class="dhm-hf-stations-list">
+            ${dangerStations.map(st => {
+              const name = st.stationName || st.name || "Station";
+              const wl = st.waterLevel !== null && !isNaN(st.waterLevel) ? st.waterLevel.toFixed(2) + "m" : "--";
+              const dang = st.dangerLevel !== null && !isNaN(st.dangerLevel) ? st.dangerLevel.toFixed(2) + "m" : "";
+              const diffVal = st.diffDanger !== null && !isNaN(st.diffDanger) ? st.diffDanger : 
+                             (st.waterLevel !== null && st.dangerLevel !== null ? Math.round((st.waterLevel - st.dangerLevel) * 100) / 100 : null);
+              const diffTxt = diffVal !== null ? (diffVal >= 0 ? `+${diffVal.toFixed(2)}m` : `${diffVal.toFixed(2)}m`) : "";
+              const loc = [st.basin, st.district].filter(Boolean).join(", ");
+              const trendIcon = st.trend === "RISING" ? "📈" : st.trend === "FALLING" ? "📉" : st.trend === "STEADY" ? "➡️" : "";
+              return `
+                <div class="dhm-hf-station-chip dhm-hf-chip-danger" data-station-name="${escapeHtml(name)}" title="Click to locate ${escapeHtml(name)} in table">
+                  <span class="dhm-hf-chip-name">${escapeHtml(name)}</span>
+                  ${loc ? `<span class="dhm-hf-chip-loc">(${escapeHtml(loc)})</span>` : ""}
+                  <span class="dhm-hf-chip-val">WL: <b>${wl}</b></span>
+                  ${dang ? `<span class="dhm-hf-chip-thresh">Danger: ${dang}</span>` : ""}
+                  ${diffTxt ? `<span class="dhm-hf-chip-diff">🚨 ${diffTxt} above Danger</span>` : ""}
+                  ${st.trend ? `<span class="dhm-hf-chip-trend">${trendIcon} ${escapeHtml(st.trend)}</span>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    // Condition 3: When one or more stations show warning level -> Yellow flex
+    if (hasWarning) {
+      html += `
+        <div class="dhm-hazard-flex dhm-hazard-flex-warning" id="dhm-hazard-warning-flex">
+          <div class="dhm-hf-header">
+            <div class="dhm-hf-title-group">
+              <span class="dhm-hf-icon">⚠️</span>
+              <span class="dhm-hf-title">Warning Level Exceeded</span>
+              <span class="dhm-hf-badge">${warningStations.length} ${warningStations.length === 1 ? "Station" : "Stations"}</span>
+            </div>
+            <div class="dhm-hf-actions">
+              <span class="dhm-hf-desc">Flood Advisory: Water level has crossed Warning threshold</span>
+              ${context === "river-watch" ? `
+                <button type="button" class="dhm-hf-filter-btn dhm-hf-btn-warning" data-filter="HAZARD_WARNING" title="Filter table to only show Warning Level exceeded stations">
+                  <span>⚠️ Show Only Warning</span>
+                </button>
+              ` : ""}
+            </div>
+          </div>
+          <div class="dhm-hf-stations-list">
+            ${warningStations.map(st => {
+              const name = st.stationName || st.name || "Station";
+              const wl = st.waterLevel !== null && !isNaN(st.waterLevel) ? st.waterLevel.toFixed(2) + "m" : "--";
+              const warn = st.warningLevel !== null && !isNaN(st.warningLevel) ? st.warningLevel.toFixed(2) + "m" : "";
+              const diffVal = st.diffWarning !== null && !isNaN(st.diffWarning) ? st.diffWarning : 
+                             (st.waterLevel !== null && st.warningLevel !== null ? Math.round((st.waterLevel - st.warningLevel) * 100) / 100 : null);
+              const diffTxt = diffVal !== null ? (diffVal >= 0 ? `+${diffVal.toFixed(2)}m` : `${diffVal.toFixed(2)}m`) : "";
+              const loc = [st.basin, st.district].filter(Boolean).join(", ");
+              const trendIcon = st.trend === "RISING" ? "📈" : st.trend === "FALLING" ? "📉" : st.trend === "STEADY" ? "➡️" : "";
+              return `
+                <div class="dhm-hf-station-chip dhm-hf-chip-warning" data-station-name="${escapeHtml(name)}" title="Click to locate ${escapeHtml(name)} in table">
+                  <span class="dhm-hf-chip-name">${escapeHtml(name)}</span>
+                  ${loc ? `<span class="dhm-hf-chip-loc">(${escapeHtml(loc)})</span>` : ""}
+                  <span class="dhm-hf-chip-val">WL: <b>${wl}</b></span>
+                  ${warn ? `<span class="dhm-hf-chip-thresh">Warn: ${warn}</span>` : ""}
+                  ${diffTxt ? `<span class="dhm-hf-chip-diff">⚠️ ${diffTxt} above Warning</span>` : ""}
+                  ${st.trend ? `<span class="dhm-hf-chip-trend">${trendIcon} ${escapeHtml(st.trend)}</span>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    return html;
+  }
+
+  /**
+   * Renders dedicated Rising Stations Flex Type containing a live rising stations table.
+   * Displayed inside the Near Exceeding / Warning tab view so hydrologists can monitor
+   * near/exceeding warning stations and all rising water level stations simultaneously.
+   */
+  function renderRisingStationsFlexHtml(risingStations = []) {
+    const count = risingStations.length;
+    const hasStations = count > 0;
+
+    return `
+      <div class="dhm-hazard-flex dhm-hazard-flex-rising" id="dhm-hazard-rising-flex">
+        <div class="dhm-hf-header">
+          <div class="dhm-hf-title-group">
+            <span class="dhm-hf-icon">📈</span>
+            <span class="dhm-hf-title">Rising Water Level Stations</span>
+            <span class="dhm-hf-badge">${count} ${count === 1 ? "Station" : "Stations"} Rising</span>
+          </div>
+          <div class="dhm-hf-actions">
+            <span class="dhm-hf-desc">Active Flood Trend: Telemetry stations currently reporting rising river levels</span>
+            <button type="button" class="dhm-hf-btn-rising" id="dhm-rw-goto-rising-btn" title="Switch main table view to show only Rising stations">
+              <span>📈 View Main Rising Tab</span>
+            </button>
+            <button type="button" class="dhm-hf-collapse-btn" id="dhm-rw-toggle-rising-btn" title="Collapse or Expand Rising Stations Table">
+              <span>▼ Collapse Table</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="dhm-rising-table-wrapper" id="dhm-rising-table-wrapper">
+          ${!hasStations ? `
+            <div class="dhm-rising-empty-state">
+              <span style="font-size:22px;">🟢</span>
+              <div>
+                <div style="font-weight: 700; color: #0369a1; margin-bottom: 2px;">No Stations Currently Rising</div>
+                <div style="font-size: 12px; color: #0284c7;">All monitored river observation stations nationwide are currently reporting steady or receding water levels.</div>
+              </div>
+            </div>
+          ` : `
+            <div class="dhm-rising-table-controls">
+              <span class="dhm-rising-table-note">Showing all <b>${count}</b> stations trending upwards across Nepal. Click <b>🔍 Locate</b> to highlight any station in the main table.</span>
+              <div class="dhm-rising-mini-search">
+                <input type="text" id="dhm-rising-search-input" placeholder="🔍 Filter rising stations..." class="dhm-rising-search-input">
+              </div>
+            </div>
+            <div class="dhm-rising-table-scroll">
+              <table class="dhm-rising-table" id="dhm-rising-table-el">
+                <thead>
+                  <tr>
+                    <th style="width: 36px; text-align: center;">#</th>
+                    <th>Basin</th>
+                    <th>Index</th>
+                    <th>Station Name</th>
+                    <th>District</th>
+                    <th style="text-align: right;">Water Level</th>
+                    <th style="text-align: right;">Warning Level</th>
+                    <th style="text-align: right;">Danger Level</th>
+                    <th style="text-align: center;">Warning Level Diff</th>
+                    <th style="text-align: center;">Trend</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: center;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${risingStations.map((st, i) => {
+                    const name = st.stationName || "Station";
+                    const wl = st.waterLevel !== null && !isNaN(st.waterLevel) ? st.waterLevel.toFixed(2) + "m" : "--";
+                    const warn = st.warningLevel !== null && !isNaN(st.warningLevel) ? st.warningLevel.toFixed(2) + "m" : "--";
+                    const dang = st.dangerLevel !== null && !isNaN(st.dangerLevel) ? st.dangerLevel.toFixed(2) + "m" : "--";
+                    
+                    let diffBadge = "";
+                    if (st.diffWarning !== null && !isNaN(st.diffWarning)) {
+                      if (st.diffWarning >= 0) {
+                        diffBadge = `<span class="dhm-diff-badge diff-above-warning" title="Above Warning Level by ${st.diffWarning.toFixed(2)}m">🚨 +${st.diffWarning.toFixed(2)}m above</span>`;
+                      } else if (st.diffWarning >= -1.0) {
+                        diffBadge = `<span class="dhm-diff-badge diff-near-warning" title="Approaching Warning Level (${Math.abs(st.diffWarning).toFixed(2)}m remaining)">⚠️ ${st.diffWarning.toFixed(2)}m to Warn</span>`;
+                      } else {
+                        diffBadge = `<span class="dhm-diff-badge diff-below-warning" title="${Math.abs(st.diffWarning).toFixed(2)}m below Warning Level">🛡️ ${st.diffWarning.toFixed(2)}m</span>`;
+                      }
+                    } else {
+                      diffBadge = `<span style="color:#94a3b8;">--</span>`;
+                    }
+
+                    const isNearOrAbove = st.diffWarning !== null && st.diffWarning >= -1.0;
+                    const statusClass = (st.status || "").includes("DANGER") ? "status-danger" :
+                                        (st.status || "").includes("WARNING") && !(st.status || "").includes("BELOW") ? "status-warning" : "status-safe";
+                    const statusLabel = (st.status || "").includes("DANGER") ? "DANGER" :
+                                        (st.status || "").includes("WARNING") && !(st.status || "").includes("BELOW") ? "WARNING" : "BELOW WARN";
+
+                    return `
+                      <tr class="dhm-rising-row ${isNearOrAbove ? "dhm-rising-row-hazard" : ""}" data-name="${escapeHtml(name)}" data-basin="${escapeHtml(st.basin || "")}" data-district="${escapeHtml(st.district || "")}">
+                        <td style="text-align: center; color: #64748b; font-weight: 600;">${i + 1}</td>
+                        <td><b>${escapeHtml(st.basin || "--")}</b></td>
+                        <td style="font-family: monospace; font-size: 11px; color: #475569;">${escapeHtml(st.stationIndex || "--")}</td>
+                        <td>
+                          <div style="font-weight: 700; color: #0f72a9;">${escapeHtml(name)}</div>
+                          ${st.stationTime ? `<div style="font-size: 10.5px; color: #64748b;">${escapeHtml(st.stationTime)}</div>` : ""}
+                        </td>
+                        <td>${escapeHtml(st.district || "--")}</td>
+                        <td style="text-align: right; font-weight: 800; color: #0284c7;">${wl}</td>
+                        <td style="text-align: right; font-weight: 600; color: #d97706;">${warn}</td>
+                        <td style="text-align: right; font-weight: 600; color: #dc2626;">${dang}</td>
+                        <td style="text-align: center;">${diffBadge}</td>
+                        <td style="text-align: center;">
+                          <span class="dhm-trend-badge dhm-trend-rising" title="Water Level is RISING">RISING ↑</span>
+                        </td>
+                        <td style="text-align: center;">
+                          <span class="dhm-status-chip ${statusClass}">${statusLabel}</span>
+                        </td>
+                        <td style="text-align: center;">
+                          <button type="button" class="dhm-btn-locate-station" data-station-name="${escapeHtml(name)}" title="Locate & highlight ${escapeHtml(name)} in table">
+                            🔍 Locate
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  function locateAndHighlightStation(table, stationName) {
+    if (!table || !stationName) return;
+    const tbody = table.querySelector("tbody.watch_table_tbody") || table.querySelector("tbody");
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll("tr.watch_table_tr, tr"));
+    const target = rows.find(tr => {
+      const txt = (tr.innerText || "").toLowerCase();
+      return txt.includes(stationName.toLowerCase());
+    });
+
+    if (target) {
+      target.style.display = "";
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.remove("dhm-row-highlight");
+      void target.offsetWidth; // force DOM reflow
+      target.classList.add("dhm-row-highlight");
+      setTimeout(() => {
+        target.classList.remove("dhm-row-highlight");
+      }, 3000);
+    }
   }
 
   /* ==========================================================================
@@ -771,6 +1059,27 @@
     const steadyCount = state.stations.filter(s => (s.waterLevelTrend || "").toUpperCase() === "STEADY").length;
     const healthRate = totalCount > 0 ? Math.round((normalCount / totalCount) * 100) : 0;
 
+    // Compute Danger and Warning Level exceeded stations
+    const dangerStations = state.stations.filter(s => {
+      if (s.waterLevel === null || isNaN(s.waterLevel)) return false;
+      const isDangDiff = s.diffDanger !== null && s.diffDanger >= 0;
+      const isDangVal = s.dangerLevel !== null && s.waterLevel >= s.dangerLevel;
+      const isDangStatus = (s.status || "").includes("DANGER");
+      return isDangDiff || isDangVal || isDangStatus;
+    }).sort((a, b) => (b.diffDanger || 0) - (a.diffDanger || 0));
+
+    const warningStations = state.stations.filter(s => {
+      if (s.waterLevel === null || isNaN(s.waterLevel)) return false;
+      const isDang = (s.diffDanger !== null && s.diffDanger >= 0) ||
+                     (s.dangerLevel !== null && s.waterLevel >= s.dangerLevel) ||
+                     (s.status || "").includes("DANGER");
+      if (isDang) return false;
+      const isWarnDiff = s.diffWarning !== null && s.diffWarning >= 0;
+      const isWarnVal = s.warningLevel !== null && s.waterLevel >= s.warningLevel;
+      const isWarnStatus = (s.status || "").includes("WARNING") && !(s.status || "").includes("BELOW");
+      return isWarnDiff || isWarnVal || isWarnStatus;
+    }).sort((a, b) => (b.diffWarning || 0) - (a.diffWarning || 0));
+
     const { timeStr, dateStr } = formatNepalClock(state.nepalTime);
     const basins = Array.from(new Set(state.stations.map(s => s.basin).filter(Boolean))).sort();
     const districts = Array.from(new Set(state.stations.map(s => s.district).filter(Boolean))).sort();
@@ -806,15 +1115,17 @@
             <span>🌊 River Watch Sorter ↗</span>
           </a>
 
-          <div class="dw-filter-item">
+          <div class="dw-filter-item" style="display:none">
             <span class="dw-filter-label">Auto:</span>
-            <select class="dw-select" id="dw-auto-refresh-select">
+            <select class="dw-select" id="dw-auto-refresh-select" title="Auto-refresh countdown interval">
               <option value="30" ${state.autoRefreshInterval === 30 ? "selected" : ""}>30s</option>
               <option value="60" ${state.autoRefreshInterval === 60 ? "selected" : ""}>1 min</option>
               <option value="120" ${state.autoRefreshInterval === 120 ? "selected" : ""}>2 mins</option>
-              <option value="300" ${state.autoRefreshInterval === 300 ? "selected" : ""}>5 mins</option>
+              <option value="300" ${state.autoRefreshInterval === 300 ? "selected" : ""}>5 mins (Default)</option>
+              <option value="600" ${state.autoRefreshInterval === 600 ? "selected" : ""}>10 mins</option>
               <option value="0" ${state.autoRefreshInterval === 0 ? "selected" : ""}>Off</option>
             </select>
+            <span class="dw-countdown-chip" id="dw-countdown-timer" title="Time remaining until next auto-refresh">5:00</span>
           </div>
         </div>
       </div>
@@ -845,6 +1156,11 @@
           <div class="dw-kpi-value">${healthRate}%</div>
           <div class="dw-kpi-sub">On-time telemetry rate</div>
         </div>
+      </div>
+
+      <!-- Hazard Level Alert Flexes (Warning, Danger, No Warning) -->
+      <div class="dhm-hazard-alerts-wrapper" id="dhm-dw-hazard-wrapper">
+        ${renderHazardFlexesHtml(dangerStations, warningStations, 'data-watch')}
       </div>
 
       <div class="dw-filter-panel">
@@ -1057,6 +1373,13 @@
     const autoSelect = document.getElementById("dw-auto-refresh-select");
     if (autoSelect) autoSelect.addEventListener("change", (e) => {
       state.autoRefreshInterval = parseInt(e.target.value, 10);
+      state.autoRefreshEnabled = state.autoRefreshInterval > 0;
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({
+          autoRefreshInterval: state.autoRefreshInterval,
+          autoRefreshEnabled: state.autoRefreshEnabled
+        });
+      }
       setupAutoRefresh();
     });
 
@@ -1123,6 +1446,41 @@
             sortField;
         }
         renderDashboardContent();
+      });
+    });
+
+    // Hazard Level Chips click to locate row in Data Watch table
+    root.querySelectorAll(".dhm-hf-station-chip").forEach(chip => {
+      chip.addEventListener("click", (e) => {
+        e.preventDefault();
+        const name = chip.getAttribute("data-station-name");
+        if (!name) return;
+        const rows = Array.from(root.querySelectorAll(".dw-table tbody tr"));
+        const target = rows.find(r => (r.innerText || "").toLowerCase().includes(name.toLowerCase()));
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "center" });
+          target.classList.remove("dhm-row-highlight");
+          void target.offsetWidth;
+          target.classList.add("dhm-row-highlight");
+          setTimeout(() => target.classList.remove("dhm-row-highlight"), 3000);
+        }
+      });
+    });
+
+    // Hazard filter buttons in Data Watch
+    root.querySelectorAll(".dhm-hf-filter-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const filter = btn.getAttribute("data-filter");
+        if (filter === "HAZARD_DANGER") {
+          state.statusFilter = "all";
+          state.searchQuery = "danger";
+          renderDashboardContent();
+        } else if (filter === "HAZARD_WARNING") {
+          state.statusFilter = "all";
+          state.searchQuery = "warning";
+          renderDashboardContent();
+        }
       });
     });
   }
@@ -1284,14 +1642,85 @@
     const alertCount = rowDataList.filter(r => r.status.includes("DANGER") || (r.status.includes("WARNING") && !r.status.includes("BELOW")) || (r.diffObj && r.diffObj.isAboveWarning)).length;
     const nearWarnCount = rowDataList.filter(r => r.diffWarning !== null && r.diffWarning >= -1.0).length;
 
+    // Danger Level Exceeded stations:
+    const dangerStations = rowDataList.filter(r => {
+      if (r.waterLevel === null || isNaN(r.waterLevel)) return false;
+      const isDangDiff = r.diffDanger !== null && r.diffDanger >= 0;
+      const isDangVal = r.dangerLevel !== null && r.waterLevel >= r.dangerLevel;
+      const isDangStatus = (r.status || "").includes("DANGER");
+      return isDangDiff || isDangVal || isDangStatus;
+    }).sort((a, b) => {
+      const diffA = a.diffDanger !== null ? a.diffDanger : 0;
+      const diffB = b.diffDanger !== null ? b.diffDanger : 0;
+      return diffB - diffA;
+    });
+
+    // Warning Level Exceeded stations (Exceeded warning, but not danger):
+    const warningStations = rowDataList.filter(r => {
+      if (r.waterLevel === null || isNaN(r.waterLevel)) return false;
+      const isDang = (r.diffDanger !== null && r.diffDanger >= 0) ||
+                     (r.dangerLevel !== null && r.waterLevel >= r.dangerLevel) ||
+                     (r.status || "").includes("DANGER");
+      if (isDang) return false;
+      const isWarnDiff = r.diffWarning !== null && r.diffWarning >= 0;
+      const isWarnVal = r.warningLevel !== null && r.waterLevel >= r.warningLevel;
+      const isWarnStatus = (r.status || "").includes("WARNING") && !(r.status || "").includes("BELOW");
+      return isWarnDiff || isWarnVal || isWarnStatus;
+    }).sort((a, b) => {
+      const diffA = a.diffWarning !== null ? a.diffWarning : 0;
+      const diffB = b.diffWarning !== null ? b.diffWarning : 0;
+      return diffB - diffA;
+    });
+
+    // Rising stations (sorted closest to warning / highest flood risk first):
+    const risingStations = rowDataList.filter(r => r.trend === "RISING").sort((a, b) => {
+      const diffA = a.diffWarning !== null ? a.diffWarning : -Infinity;
+      const diffB = b.diffWarning !== null ? b.diffWarning : -Infinity;
+      if (diffA !== diffB) return diffB - diffA;
+      return (b.waterLevel || 0) - (a.waterLevel || 0);
+    });
+
+    // By default after every refresh, reach river watch and select Near / Exceeding Warning
+    if ((state.autoClickNearWarning || state.autoClickRising) && !state.hasAutoClickedDefaultTab) {
+      riverWatchState.trendFilter = "NEAR_WARNING";
+      riverWatchState.sortKey = "diff_warning_desc";
+    }
+
     // Inject River Watch Toolbar above the table
-    injectRiverWatchToolbar(table, { totalCount, risingCount, fallingCount, steadyCount, alertCount, nearWarnCount });
+    injectRiverWatchToolbar(table, { 
+      totalCount, 
+      risingCount, 
+      fallingCount, 
+      steadyCount, 
+      alertCount, 
+      nearWarnCount,
+      dangerStations,
+      warningStations,
+      risingStations
+    });
 
     // Enhance table headers (thead th) with sortable indicators and click handlers
     enhanceTableHeaders(table);
 
     // Apply active sort & filter
     applyRiverWatchSortAndFilter(table, false);
+
+    // Mark and click Near / Exceeding Warning button on this refresh cycle
+    if ((state.autoClickNearWarning || state.autoClickRising) && !state.hasAutoClickedDefaultTab) {
+      state.hasAutoClickedDefaultTab = true;
+      state.hasAutoClickedRising = true;
+      const nearWarnPill = document.querySelector('.dhm-rw-pill[data-trend="NEAR_WARNING"]');
+      if (nearWarnPill) {
+        nearWarnPill.classList.add("active");
+        nearWarnPill.click();
+      }
+    }
+
+    // Track baseline of rising stations and start live Trend Column watcher
+    if (riverWatchState.trendFilter === "RISING" || riverWatchState.trendFilter === "NEAR_WARNING") {
+      updateRisingStationsBaseline(rowDataList);
+      startTrendColumnWatcher(table);
+    }
   }
 
   function injectRiverWatchToolbar(table, stats) {
@@ -1320,6 +1749,14 @@
         </div>
 
         <div class="dhm-rw-actions">
+          <!-- 5-Minute Auto-Refresh Live Box -->
+          <div class="dhm-rw-autorefresh-box" id="dhm-rw-autorefresh-box" title="Auto-refreshes every 5 minutes and loads Near / Exceeding Warning stations">
+            <span class="dhm-rw-ar-icon">⏱️</span>
+            <span class="dhm-rw-ar-text">Auto-Refresh:</span>
+            <span class="dhm-rw-ar-timer" id="dhm-rw-countdown-display">5:00</span>
+            <button class="dhm-rw-ar-btn-reload" id="dhm-rw-btn-refresh-now" title="Refresh data now">🔄</button>
+          </div>
+
           <button class="dhm-rw-btn dhm-rw-btn-csv" id="dhm-rw-export-csv" title="Download currently sorted & filtered River Watch table to CSV">
             <span>📥 Export CSV</span>
           </button>
@@ -1327,6 +1764,11 @@
             <span>🔄 Reset Order</span>
           </button>
         </div>
+      </div>
+
+      <!-- Hazard Level Alert Flexes (Warning, Danger, No Warning) -->
+      <div class="dhm-hazard-alerts-wrapper" id="dhm-rw-hazard-wrapper">
+        ${renderHazardFlexesHtml(stats.dangerStations, stats.warningStations, 'river-watch')}
       </div>
 
       <!-- Trend & Hazard Filter Tabs / Pills -->
@@ -1358,6 +1800,11 @@
             <span class="dhm-rw-pill-cnt">${stats.alertCount}</span>
           </div>
         </div>
+      </div>
+
+      <!-- Separate Flex Container for Rising Stations Table (Shown in Near Exceeding / Warning tab) -->
+      <div class="dhm-rw-rising-flex-container" id="dhm-rw-rising-flex-wrapper" style="${riverWatchState.trendFilter === 'NEAR_WARNING' ? '' : 'display: none;'}">
+        ${renderRisingStationsFlexHtml(stats.risingStations || [])}
       </div>
 
       <!-- Sorter Controls & Search -->
@@ -1426,7 +1873,33 @@
         toolbar.querySelectorAll(".dhm-rw-pill").forEach(p => p.classList.remove("active"));
         pill.classList.add("active");
 
+        // Sync Rising Stations Flex visibility with active filter
+        const risingFlexWrapper = document.getElementById("dhm-rw-rising-flex-wrapper");
+        if (risingFlexWrapper) {
+          if (riverWatchState.trendFilter === "NEAR_WARNING") {
+            risingFlexWrapper.style.display = "";
+          } else {
+            risingFlexWrapper.style.display = "none";
+          }
+        }
+
         applyRiverWatchSortAndFilter(table, true);
+
+        // If under Rising section or Near Warning section, activate trend column watcher
+        if (riverWatchState.trendFilter === "RISING" || riverWatchState.trendFilter === "NEAR_WARNING") {
+          updateRisingStationsBaseline(riverWatchState.cachedRows);
+          startTrendColumnWatcher(table);
+        } else {
+          // Pause early trend reload watcher when viewing non-rising sections
+          if (state.trendWatchTimer) {
+            clearInterval(state.trendWatchTimer);
+            state.trendWatchTimer = null;
+          }
+          if (state.telemetryPollTimer) {
+            clearInterval(state.telemetryPollTimer);
+            state.telemetryPollTimer = null;
+          }
+        }
       });
     });
 
@@ -1462,6 +1935,14 @@
       exportBtn.addEventListener("click", () => exportRiverWatchToCSV(table));
     }
 
+    // Refresh Now Button
+    const refreshNowBtn = document.getElementById("dhm-rw-btn-refresh-now");
+    if (refreshNowBtn) {
+      refreshNowBtn.addEventListener("click", () => {
+        executePageRefresh();
+      });
+    }
+
     // Reset
     const resetBtn = document.getElementById("dhm-rw-reset-btn");
     if (resetBtn) {
@@ -1482,7 +1963,77 @@
         const allPill = toolbar.querySelector(".dhm-rw-pill[data-trend=\"all\"]");
         if (allPill) allPill.classList.add("active");
 
+        const risingFlexWrapper = document.getElementById("dhm-rw-rising-flex-wrapper");
+        if (risingFlexWrapper) risingFlexWrapper.style.display = "none";
+
         applyRiverWatchSortAndFilter(table, true);
+      });
+    }
+
+    // Hazard station chips click to locate and highlight row
+    toolbar.querySelectorAll(".dhm-hf-station-chip").forEach(chip => {
+      chip.addEventListener("click", (e) => {
+        e.preventDefault();
+        const stationName = chip.getAttribute("data-station-name");
+        locateAndHighlightStation(table, stationName);
+      });
+    });
+
+    // Hazard filter buttons (Show Only Danger / Show Only Warning)
+    toolbar.querySelectorAll(".dhm-hf-filter-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const filter = btn.getAttribute("data-filter");
+        if (!filter) return;
+        riverWatchState.trendFilter = filter;
+        toolbar.querySelectorAll(".dhm-rw-pill").forEach(p => p.classList.remove("active"));
+        const risingFlexWrapper = document.getElementById("dhm-rw-rising-flex-wrapper");
+        if (risingFlexWrapper) risingFlexWrapper.style.display = "none";
+        applyRiverWatchSortAndFilter(table, true);
+      });
+    });
+
+    // Rising stations flex - toggle collapse
+    const toggleRisingBtn = toolbar.querySelector("#dhm-rw-toggle-rising-btn");
+    const risingTableWrapper = toolbar.querySelector("#dhm-rising-table-wrapper");
+    if (toggleRisingBtn && risingTableWrapper) {
+      toggleRisingBtn.addEventListener("click", () => {
+        const isCollapsed = risingTableWrapper.classList.toggle("collapsed");
+        toggleRisingBtn.innerHTML = isCollapsed ? "<span>▲ Expand Table</span>" : "<span>▼ Collapse Table</span>";
+      });
+    }
+
+    // Rising stations flex - switch to main rising view
+    const gotoRisingBtn = toolbar.querySelector("#dhm-rw-goto-rising-btn");
+    if (gotoRisingBtn) {
+      gotoRisingBtn.addEventListener("click", () => {
+        const risingPill = toolbar.querySelector('.dhm-rw-pill[data-trend="RISING"]');
+        if (risingPill) risingPill.click();
+      });
+    }
+
+    // Rising stations flex - locate station in table
+    toolbar.querySelectorAll(".dhm-btn-locate-station").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const stationName = btn.getAttribute("data-station-name");
+        if (stationName) {
+          locateAndHighlightStation(table, stationName);
+        }
+      });
+    });
+
+    // Rising stations flex - mini search filter inside rising table
+    const risingSearchInput = toolbar.querySelector("#dhm-rising-search-input");
+    if (risingSearchInput) {
+      risingSearchInput.addEventListener("input", (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        const rows = toolbar.querySelectorAll(".dhm-rising-table tbody tr");
+        rows.forEach(r => {
+          const text = (r.innerText || "").toLowerCase();
+          r.style.display = (!query || text.includes(query)) ? "" : "none";
+        });
       });
     }
   }
@@ -1674,6 +2225,16 @@
 
       let visibleCount = 0;
 
+      // Sync Rising Stations Flex visibility with active filter
+      const risingFlexWrapper = document.getElementById("dhm-rw-rising-flex-wrapper");
+      if (risingFlexWrapper) {
+        if (trendF === "NEAR_WARNING") {
+          risingFlexWrapper.style.display = "";
+        } else {
+          risingFlexWrapper.style.display = "none";
+        }
+      }
+
       // Re-order rows in DOM & apply filtering
       const fragment = document.createDocumentFragment();
 
@@ -1689,6 +2250,19 @@
         else if (trendF === "ALERT") {
           const isAlert = row.status.includes("DANGER") || (row.status.includes("WARNING") && !row.status.includes("BELOW")) || (row.diffObj && row.diffObj.isAboveWarning);
           if (!isAlert) isVisible = false;
+        } else if (trendF === "HAZARD_DANGER") {
+          const isDang = (row.diffDanger !== null && row.diffDanger >= 0) ||
+                         (row.dangerLevel !== null && row.waterLevel >= row.dangerLevel) ||
+                         (row.status || "").includes("DANGER");
+          if (!isDang) isVisible = false;
+        } else if (trendF === "HAZARD_WARNING") {
+          const isDang = (row.diffDanger !== null && row.diffDanger >= 0) ||
+                         (row.dangerLevel !== null && row.waterLevel >= row.dangerLevel) ||
+                         (row.status || "").includes("DANGER");
+          const isWarn = (row.diffWarning !== null && row.diffWarning >= 0) ||
+                         (row.warningLevel !== null && row.waterLevel >= row.warningLevel) ||
+                         ((row.status || "").includes("WARNING") && !(row.status || "").includes("BELOW"));
+          if (isDang || !isWarn) isVisible = false;
         }
 
         // Search query
@@ -1729,6 +2303,40 @@
       });
 
       tbody.appendChild(fragment);
+
+      // If no rows match current filter (e.g. RISING), show informative empty message
+      let emptyNotice = tbody.querySelector("#dhm-rw-empty-notice-row");
+      if (visibleCount === 0) {
+        if (!emptyNotice) {
+          emptyNotice = document.createElement("tr");
+          emptyNotice.id = "dhm-rw-empty-notice-row";
+          emptyNotice.className = "dhm-rw-empty-tr";
+        }
+        let noticeTitle = "📈 Filtered Table";
+        let noticeText = "No river observation stations match the selected filter.";
+        if (trendF === "NEAR_WARNING") {
+          noticeTitle = "⚠️ Filtered by Near / Exceeding Warning Level";
+          noticeText = "No river observation stations currently within 1 meter of Warning Level or exceeding Warning Level. (Click \"🌊 All Stations\" above to view all records)";
+        } else if (trendF === "RISING") {
+          noticeTitle = "📈 Filtered by Rising Water Levels";
+          noticeText = "No river observation stations currently reporting a RISING water level trend. (Click \"🌊 All Stations\" above to view all records)";
+        } else if (trendF === "HAZARD_DANGER") {
+          noticeTitle = "🚨 Filtered by Danger Level Exceeded";
+          noticeText = "No river observation stations currently exceeding Danger Level. (Click \"🌊 All Stations\" above to view all records)";
+        } else if (trendF === "HAZARD_WARNING") {
+          noticeTitle = "⚠️ Filtered by Warning Level Exceeded";
+          noticeText = "No river observation stations currently exceeding Warning Level. (Click \"🌊 All Stations\" above to view all records)";
+        }
+        emptyNotice.innerHTML = `
+          <td colspan="11" style="text-align:center; padding: 26px 16px; background: #f8fafc; color: #475569; font-size: 13.5px;">
+            <div style="font-weight: 700; font-size: 15px; color: #0f72a9; margin-bottom: 6px;">${noticeTitle}</div>
+            <div>${noticeText}</div>
+          </td>
+        `;
+        tbody.appendChild(emptyNotice);
+      } else if (emptyNotice) {
+        emptyNotice.remove();
+      }
 
       // Update Header Indicators
       const thead = table.querySelector("thead");
@@ -1963,18 +2571,320 @@
   }
 
   /* ==========================================================================
-     TIMERS & LIFECYCLE INITIALIZATION
+     TIMERS, AUTO-REFRESH & LIFECYCLE INITIALIZATION
      ========================================================================== */
   function setupAutoRefresh() {
     if (state.autoRefreshTimer) {
       clearInterval(state.autoRefreshTimer);
       state.autoRefreshTimer = null;
     }
-    if (state.autoRefreshInterval > 0) {
-      state.autoRefreshTimer = setInterval(() => {
-        if (state.isDataWatchActive) syncAllData();
-      }, state.autoRefreshInterval * 1000);
+    if (state.countdownTimer) {
+      clearInterval(state.countdownTimer);
+      state.countdownTimer = null;
     }
+
+    if (!state.extensionEnabled || !state.autoRefreshEnabled || state.autoRefreshInterval <= 0) {
+      updateAutoRefreshUI("Off");
+      return;
+    }
+
+    // Set target timestamp for next auto-refresh
+    state.nextRefreshTimestamp = Date.now() + state.autoRefreshInterval * 1000;
+
+    // Tick every 1 second
+    state.countdownTimer = setInterval(() => {
+      if (!state.extensionEnabled || !state.autoRefreshEnabled || state.autoRefreshInterval <= 0) {
+        clearInterval(state.countdownTimer);
+        state.countdownTimer = null;
+        updateAutoRefreshUI("Off");
+        return;
+      }
+
+      const now = Date.now();
+      const remainingSec = Math.max(0, Math.ceil((state.nextRefreshTimestamp - now) / 1000));
+
+      if (remainingSec <= 0) {
+        clearInterval(state.countdownTimer);
+        state.countdownTimer = null;
+        executePageRefresh();
+        return;
+      }
+
+      const mins = Math.floor(remainingSec / 60);
+      const secs = remainingSec % 60;
+      const formatted = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+      updateAutoRefreshUI(formatted);
+
+      // Periodically sync Data Watch if active
+      if (state.isDataWatchActive && remainingSec % 60 === 0) {
+        syncAllData();
+      }
+    }, 1000);
+
+    const initialMins = Math.floor(state.autoRefreshInterval / 60);
+    const initialSecs = state.autoRefreshInterval % 60;
+    updateAutoRefreshUI(`${initialMins}:${initialSecs < 10 ? "0" : ""}${initialSecs}`);
+  }
+
+  function updateAutoRefreshUI(timeStr) {
+    // 1. River Watch Toolbar countdown
+    const rwDisplay = document.getElementById("dhm-rw-countdown-display");
+    if (rwDisplay) rwDisplay.textContent = timeStr;
+
+    // 2. Floating Toggle Widget countdown chip
+    const widgetTime = document.getElementById("dhm-widget-timer-time");
+    if (widgetTime) widgetTime.textContent = timeStr;
+
+    // 3. Data Watch tab countdown chip
+    const dwTimer = document.getElementById("dw-countdown-timer");
+    if (dwTimer) dwTimer.textContent = timeStr;
+  }
+
+  function executePageRefresh() {
+    console.log("[DHM Extension] 5-minute auto-refresh triggered. Reloading on River Watch...");
+    if (state.autoNavigateRiverWatch) {
+      if (window.location.protocol.startsWith("http")) {
+        const targetUrl = window.location.origin + window.location.pathname + "#/river_watch";
+        if (window.location.href !== targetUrl) {
+          window.location.href = targetUrl;
+        }
+      } else {
+        window.location.hash = "#/river_watch";
+      }
+    }
+    window.location.reload();
+  }
+
+  function ensureRiverWatchAndNearWarning(attempt = 0) {
+    if (!state.extensionEnabled) return;
+    if (attempt > 60) return; // 12 seconds max
+
+    // 1. By default reach River Watch page
+    const hash = window.location.hash || "";
+    if (state.autoNavigateRiverWatch && !hash.includes("river_watch")) {
+      const rwLink = document.querySelector('.tabs a[href*="river_watch"]') ||
+                     document.querySelector('a[href*="#/river_watch"]') ||
+                     document.querySelector('a[href*="river_watch"]');
+      if (rwLink) {
+        const btn = rwLink.querySelector("button") || rwLink;
+        btn.click();
+      }
+      if (!window.location.hash.includes("river_watch")) {
+        window.location.hash = "#/river_watch";
+      }
+    }
+
+    // 2. Check if River Watch table & toolbar exist and click Near Exceeding / Warning button
+    const table = document.querySelector("table.watch_table");
+    const nearWarnPill = document.querySelector('.dhm-rw-pill[data-trend="NEAR_WARNING"]');
+
+    if (table && nearWarnPill && !state.hasAutoClickedDefaultTab) {
+      state.hasAutoClickedDefaultTab = true;
+      state.hasAutoClickedRising = true;
+      nearWarnPill.classList.add("active");
+      nearWarnPill.click();
+      console.log("[DHM Extension] Successfully reached River Watch and clicked Near / Exceeding Warning button.");
+      return;
+    }
+
+    if (table && !nearWarnPill) {
+      checkAndEnhanceRiverWatch();
+    }
+
+    if (!state.hasAutoClickedDefaultTab) {
+      setTimeout(() => ensureRiverWatchAndNearWarning(attempt + 1), 200);
+    }
+  }
+
+  function ensureRiverWatchAndRising(attempt = 0) {
+    ensureRiverWatchAndNearWarning(attempt);
+  }
+
+  /* ==========================================================================
+     RIVER WATCH TREND COLUMN WATCHER (EARLY RELOAD ON RISING -> FALLING/STEADY)
+     ========================================================================== */
+  function getStationKey(name, index) {
+    const n = (name || "").toLowerCase().trim();
+    const i = (index || "").toLowerCase().trim();
+    return `${i}_${n}`;
+  }
+
+  function updateRisingStationsBaseline(rowDataList) {
+    if (riverWatchState.trendFilter !== "RISING" && riverWatchState.trendFilter !== "NEAR_WARNING") return;
+    if (!Array.isArray(rowDataList) || rowDataList.length === 0) return;
+
+    let risingCount = 0;
+    rowDataList.forEach(r => {
+      const liveTrend = (r.trend || "").trim().toUpperCase();
+      if (liveTrend === "RISING") {
+        risingCount++;
+        const key = getStationKey(r.stationName, r.stationIndex);
+        if (!state.risingStationsBaseline.has(key)) {
+          state.risingStationsBaseline.set(key, {
+            name: r.stationName,
+            index: r.stationIndex,
+            basin: r.basin,
+            trend: "RISING",
+            registeredAt: Date.now()
+          });
+        }
+      }
+    });
+
+    state.lastKnownRisingCount = risingCount;
+  }
+
+  function startTrendColumnWatcher(table) {
+    if (state.trendWatchTimer) {
+      clearInterval(state.trendWatchTimer);
+      state.trendWatchTimer = null;
+    }
+
+    // Interval DOM scanner: checks Trend Column every 1500ms
+    state.trendWatchTimer = setInterval(() => {
+      checkTrendColumnChanges();
+    }, 1500);
+
+    // MutationObserver on table.watch_table tbody for instant reactions to DOM changes
+    if (table && !table.hasAttribute("data-dhm-trend-observer")) {
+      table.setAttribute("data-dhm-trend-observer", "true");
+      const obs = new MutationObserver(() => {
+        checkTrendColumnChanges();
+      });
+      const tbody = table.querySelector("tbody.watch_table_tbody") || table.querySelector("tbody") || table;
+      obs.observe(tbody, { childList: true, subtree: true, characterData: true });
+    }
+
+    // Telemetry stream poller every 15 seconds
+    if (state.telemetryPollTimer) {
+      clearInterval(state.telemetryPollTimer);
+      state.telemetryPollTimer = null;
+    }
+    state.telemetryPollTimer = setInterval(async () => {
+      if ((riverWatchState.trendFilter === "RISING" || riverWatchState.trendFilter === "NEAR_WARNING") && state.risingStationsBaseline.size > 0 && !state.isReloadingDueToTrendChange) {
+        await fetchSocketData();
+        checkTelemetryTrendChanges();
+      }
+    }, 15000);
+  }
+
+  function checkTrendColumnChanges() {
+    const hash = window.location.hash || "";
+    if (!hash.includes("river_watch") && !document.querySelector("table.watch_table")) return;
+    if (riverWatchState.trendFilter !== "RISING" && riverWatchState.trendFilter !== "NEAR_WARNING") return;
+    if (state.risingStationsBaseline.size === 0) return;
+    if (state.isReloadingDueToTrendChange) return;
+
+    const table = document.querySelector("table.watch_table");
+    if (!table) return;
+
+    const tbody = table.querySelector("tbody.watch_table_tbody") || table.querySelector("tbody");
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll("tr.watch_table_tr, tr"));
+
+    for (const tr of rows) {
+      if (tr.id === "dhm-rw-empty-notice-row" || tr.classList.contains("dhm-rw-empty-tr")) continue;
+
+      const cells = tr.querySelectorAll("td");
+      if (cells.length < 9) continue;
+
+      // Station Index is cells[2]
+      const indexText = (cells[2] && cells[2].innerText || "").trim();
+
+      // Station Name is cells[3] (strip nested timestamp span)
+      let stationName = "";
+      if (cells[3]) {
+        const clone = cells[3].cloneNode(true);
+        const span = clone.querySelector("span");
+        if (span) span.remove();
+        stationName = clone.innerText.trim();
+      }
+
+      const key = getStationKey(stationName, indexText);
+
+      // Look in Trend Column (cells[8])
+      const trendCell = cells[8];
+      if (!trendCell) continue;
+
+      const liveTrendText = (trendCell.innerText || "").trim().toUpperCase();
+
+      // Check if this station was in the rising section baseline
+      if (state.risingStationsBaseline.has(key)) {
+        const isFalling = liveTrendText.includes("FALLING");
+        const isSteady = liveTrendText.includes("STEADY");
+
+        if (isFalling || isSteady) {
+          const newTrend = isFalling ? "FALLING" : "STEADY";
+          console.warn(`[DHM Extension] Trend change detected in Trend Column for "${stationName}" (${indexText}): RISING -> ${newTrend}! Reloading before 5 min...`);
+          triggerEarlyReloadForTrendChange(stationName, newTrend);
+          return;
+        }
+      }
+    }
+  }
+
+  function checkTelemetryTrendChanges() {
+    if (riverWatchState.trendFilter !== "RISING" && riverWatchState.trendFilter !== "NEAR_WARNING") return;
+    if (state.risingStationsBaseline.size === 0) return;
+    if (state.isReloadingDueToTrendChange) return;
+    if (!Array.isArray(state.riverData) || state.riverData.length === 0) return;
+
+    for (const r of state.riverData) {
+      const key = getStationKey(r.name, r.stationIndex);
+      if (state.risingStationsBaseline.has(key)) {
+        const liveTrend = (r.steady || "").trim().toUpperCase();
+        if (liveTrend === "FALLING" || liveTrend === "STEADY") {
+          console.warn(`[DHM Extension] Live telemetry trend change detected for "${r.name}": RISING -> ${liveTrend}! Reloading before 5 min...`);
+          triggerEarlyReloadForTrendChange(r.name, liveTrend);
+          return;
+        }
+      }
+    }
+  }
+
+  function triggerEarlyReloadForTrendChange(stationName, newTrend) {
+    if (state.isReloadingDueToTrendChange) return;
+    state.isReloadingDueToTrendChange = true;
+
+    showTrendChangeToast(stationName, newTrend);
+
+    if (state.countdownTimer) {
+      clearInterval(state.countdownTimer);
+      state.countdownTimer = null;
+    }
+    if (state.trendWatchTimer) {
+      clearInterval(state.trendWatchTimer);
+      state.trendWatchTimer = null;
+    }
+    if (state.telemetryPollTimer) {
+      clearInterval(state.telemetryPollTimer);
+      state.telemetryPollTimer = null;
+    }
+
+    // Reload page early before 5 min
+    setTimeout(() => {
+      executePageRefresh();
+    }, 800);
+  }
+
+  function showTrendChangeToast(stationName, newTrend) {
+    let toast = document.getElementById("dhm-trend-change-toast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "dhm-trend-change-toast";
+      toast.className = "dhm-toast-trend-change";
+      document.body.appendChild(toast);
+    }
+    const trendIcon = newTrend === "FALLING" ? "📉" : "➡️";
+    toast.innerHTML = `
+      <div class="dhm-toast-icon">⚡</div>
+      <div class="dhm-toast-body">
+        <div class="dhm-toast-title">River Trend Change Detected!</div>
+        <div class="dhm-toast-msg">Station <b>${escapeHtml(stationName)}</b> changed from <b>RISING</b> to <b>${newTrend} ${trendIcon}</b>.</div>
+        <div class="dhm-toast-sub">Reloading River Watch page before 5 min...</div>
+      </div>
+    `;
   }
 
   function setupLiveClock() {
@@ -2010,6 +2920,10 @@
         <span>🌊</span>
         <span>DHM Watch</span>
       </div>
+      <div class="dhm-widget-timer-chip" id="dhm-widget-timer-chip" title="5-minute auto-refresh with Rising priority (Click to Refresh Now)">
+        <span class="dhm-widget-timer-icon">⏱️</span>
+        <span class="dhm-widget-timer-time" id="dhm-widget-timer-time">5:00</span>
+      </div>
       <label class="dhm-widget-switch">
         <input type="checkbox" id="dhm-widget-toggle-input" ${state.extensionEnabled ? "checked" : ""}>
         <span class="dhm-widget-slider"></span>
@@ -2023,6 +2937,13 @@
     if (toggleInput) {
       toggleInput.addEventListener("change", (e) => {
         setExtensionEnabledState(e.target.checked);
+      });
+    }
+
+    const timerChip = widget.querySelector("#dhm-widget-timer-chip");
+    if (timerChip) {
+      timerChip.addEventListener("click", () => {
+        executePageRefresh();
       });
     }
 
@@ -2057,8 +2978,12 @@
 
     if (enabled) {
       enableExtensionFeatures();
+      setupAutoRefresh();
+      ensureRiverWatchAndNearWarning();
     } else {
       disableExtensionFeatures();
+      if (state.countdownTimer) clearInterval(state.countdownTimer);
+      updateAutoRefreshUI("Off");
     }
   }
 
@@ -2101,13 +3026,30 @@
   function init() {
     // Read extension state from chrome.storage
     if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
-      chrome.storage.local.get({ extensionEnabled: true }, (res) => {
+      chrome.storage.local.get({
+        extensionEnabled: true,
+        autoRefreshInterval: 300,
+        autoRefreshEnabled: true,
+        autoNavigateRiverWatch: true,
+        autoClickNearWarning: true,
+        autoClickRising: false
+      }, (res) => {
         state.extensionEnabled = res.extensionEnabled !== false;
+        state.autoRefreshInterval = typeof res.autoRefreshInterval === "number" ? res.autoRefreshInterval : 300;
+        state.autoRefreshEnabled = res.autoRefreshEnabled !== false;
+        state.autoNavigateRiverWatch = res.autoNavigateRiverWatch !== false;
+        state.autoClickNearWarning = res.autoClickNearWarning !== false;
+        state.autoClickRising = res.autoClickRising === true;
 
         injectFloatingToggleWidget();
 
         if (state.extensionEnabled) {
           enableExtensionFeatures();
+          setupLiveClock();
+          setupAutoRefresh();
+          // After every refresh/load, reach River Watch page and click Near Exceeding / Warning button
+          ensureRiverWatchAndNearWarning();
+          syncAllData();
         } else {
           disableExtensionFeatures();
         }
@@ -2115,8 +3057,18 @@
 
       // Listen for popup toggles or storage updates
       chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === "local" && changes.extensionEnabled) {
-          setExtensionEnabledState(changes.extensionEnabled.newValue);
+        if (namespace === "local") {
+          if (changes.extensionEnabled) {
+            setExtensionEnabledState(changes.extensionEnabled.newValue);
+          }
+          if (changes.autoRefreshInterval) {
+            state.autoRefreshInterval = changes.autoRefreshInterval.newValue;
+            setupAutoRefresh();
+          }
+          if (changes.autoRefreshEnabled) {
+            state.autoRefreshEnabled = changes.autoRefreshEnabled.newValue;
+            setupAutoRefresh();
+          }
         }
       });
 
@@ -2124,12 +3076,18 @@
         chrome.runtime.onMessage.addListener((msg) => {
           if (msg && msg.action === "EXTENSION_TOGGLED") {
             setExtensionEnabledState(msg.enabled);
+          } else if (msg && msg.action === "TRIGGER_5MIN_AUTO_REFRESH") {
+            executePageRefresh();
           }
         });
       }
     } else {
       injectFloatingToggleWidget();
       enableExtensionFeatures();
+      setupLiveClock();
+      setupAutoRefresh();
+      ensureRiverWatchAndNearWarning();
+      syncAllData();
     }
 
     window.addEventListener("hashchange", () => {
@@ -2157,10 +3115,6 @@
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-
-    setupLiveClock();
-    setupAutoRefresh();
-    syncAllData();
   }
 
   if (document.readyState === "loading") {

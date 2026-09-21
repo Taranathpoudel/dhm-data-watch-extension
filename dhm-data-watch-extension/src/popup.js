@@ -204,6 +204,27 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("stat-falling-count").textContent = falling;
     document.getElementById("stat-steady-count").textContent = steady;
 
+    // Calculate Danger and Warning Level exceeded stations
+    const dangerStations = stations.filter(s => {
+      if (s.waterLevel === null || isNaN(s.waterLevel)) return false;
+      return (s.diffDanger !== null && s.diffDanger >= 0) ||
+             (s.dangerLevel !== null && s.waterLevel >= s.dangerLevel) ||
+             (s.status && s.status.includes("DANGER"));
+    }).sort((a, b) => (b.diffDanger || 0) - (a.diffDanger || 0));
+
+    const warningStations = stations.filter(s => {
+      if (s.waterLevel === null || isNaN(s.waterLevel)) return false;
+      const isDang = (s.diffDanger !== null && s.diffDanger >= 0) ||
+                     (s.dangerLevel !== null && s.waterLevel >= s.dangerLevel) ||
+                     (s.status && s.status.includes("DANGER"));
+      if (isDang) return false;
+      return (s.diffWarning !== null && s.diffWarning >= 0) ||
+             (s.warningLevel !== null && s.waterLevel >= s.warningLevel) ||
+             (s.status && s.status.includes("WARNING") && !s.status.includes("BELOW"));
+    }).sort((a, b) => (b.diffWarning || 0) - (a.diffWarning || 0));
+
+    renderPopupHazardFlexes(dangerStations, warningStations);
+
     renderList();
   }
 
@@ -323,6 +344,30 @@ document.addEventListener("DOMContentLoaded", () => {
   addFilterClick("box-filter-critical", "critical");
   addFilterClick("box-filter-normal", "normal");
 
+  // Refresh Now button in popup
+  const refreshNowBtn = document.getElementById("pop-btn-refresh-now");
+  if (refreshNowBtn) {
+    refreshNowBtn.addEventListener("click", () => {
+      refreshNowBtn.textContent = "⏳ Reloading...";
+      if (typeof chrome !== "undefined" && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs && tabs[0] && tabs[0].id) {
+            const url = tabs[0].url || "";
+            if (url.includes("hydrology.gov.np")) {
+              chrome.tabs.sendMessage(tabs[0].id, { action: "TRIGGER_5MIN_AUTO_REFRESH" }).then(() => {
+                window.close();
+              }).catch(() => {
+                chrome.tabs.update(tabs[0].id, { url: "https://hydrology.gov.np/#/river_watch" }, () => window.close());
+              });
+              return;
+            }
+          }
+          chrome.tabs.create({ url: "https://hydrology.gov.np/#/river_watch" }, () => window.close());
+        });
+      }
+    });
+  }
+
   // Open site buttons
   const rwBtn = document.getElementById("btn-open-river-watch");
   if (rwBtn) {
@@ -336,6 +381,112 @@ document.addEventListener("DOMContentLoaded", () => {
     dwBtn.addEventListener("click", () => {
       chrome.tabs.create({ url: "https://hydrology.gov.np/#/data_watch" });
     });
+  }
+
+  function renderPopupHazardFlexes(dangerStations, warningStations) {
+    const container = document.getElementById("pop-hazard-wrapper");
+    if (!container) return;
+
+    const hasDanger = dangerStations && dangerStations.length > 0;
+    const hasWarning = warningStations && warningStations.length > 0;
+
+    // Green Flex: No Warning (when no stations in warning or danger level)
+    if (!hasDanger && !hasWarning) {
+      container.innerHTML = `
+        <div class="pop-hazard-flex pop-hazard-flex-nowarning">
+          <span class="pop-hf-icon">🟢</span>
+          <div class="pop-hf-text">
+            <span class="pop-hf-title">No Warning</span>
+            <span class="pop-hf-desc">&mdash; All stations below warning levels</span>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    let html = "";
+
+    // Red Flex: Danger Level Exceeded (when >= 1 stations show danger level)
+    if (hasDanger) {
+      html += `
+        <div class="pop-hazard-flex pop-hazard-flex-danger">
+          <div class="pop-hf-header">
+            <div class="pop-hf-title-group">
+              <span class="pop-hf-icon">🚨</span>
+              <span class="pop-hf-title">Danger Level Exceeded</span>
+              <span class="pop-hf-badge">${dangerStations.length}</span>
+            </div>
+          </div>
+          <div class="pop-hf-stations">
+            ${dangerStations.map(s => {
+              const diffVal = s.diffDanger !== null && !isNaN(s.diffDanger) ? s.diffDanger : 
+                             (s.waterLevel !== null && s.dangerLevel !== null ? Math.round((s.waterLevel - s.dangerLevel) * 100) / 100 : null);
+              const diffTxt = diffVal !== null ? (diffVal >= 0 ? `+${diffVal.toFixed(2)}m` : `${diffVal.toFixed(2)}m`) : "";
+              return `
+                <div class="pop-hf-chip pop-hf-chip-danger" data-station-name="${escapeHtml(s.name)}" title="${escapeHtml(s.name)}: WL ${s.waterLevel !== null ? s.waterLevel + 'm' : ''}, Danger ${s.dangerLevel !== null ? s.dangerLevel + 'm' : ''}">
+                  <span class="pop-hf-chip-name">${escapeHtml(s.name)}</span>
+                  ${diffTxt ? `<span class="pop-hf-chip-diff">🚨 ${diffTxt}</span>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    // Yellow Flex: Warning Level Exceeded (when >= 1 stations show warning level)
+    if (hasWarning) {
+      html += `
+        <div class="pop-hazard-flex pop-hazard-flex-warning">
+          <div class="pop-hf-header">
+            <div class="pop-hf-title-group">
+              <span class="pop-hf-icon">⚠️</span>
+              <span class="pop-hf-title">Warning Level Exceeded</span>
+              <span class="pop-hf-badge">${warningStations.length}</span>
+            </div>
+          </div>
+          <div class="pop-hf-stations">
+            ${warningStations.map(s => {
+              const diffVal = s.diffWarning !== null && !isNaN(s.diffWarning) ? s.diffWarning : 
+                             (s.waterLevel !== null && s.warningLevel !== null ? Math.round((s.waterLevel - s.warningLevel) * 100) / 100 : null);
+              const diffTxt = diffVal !== null ? (diffVal >= 0 ? `+${diffVal.toFixed(2)}m` : `${diffVal.toFixed(2)}m`) : "";
+              return `
+                <div class="pop-hf-chip pop-hf-chip-warning" data-station-name="${escapeHtml(s.name)}" title="${escapeHtml(s.name)}: WL ${s.waterLevel !== null ? s.waterLevel + 'm' : ''}, Warn ${s.warningLevel !== null ? s.warningLevel + 'm' : ''}">
+                  <span class="pop-hf-chip-name">${escapeHtml(s.name)}</span>
+                  ${diffTxt ? `<span class="pop-hf-chip-diff">⚠️ ${diffTxt}</span>` : ""}
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+
+    // Attach click handlers to chips to open River Watch and search
+    container.querySelectorAll(".pop-hf-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        openDhmTab("#/river_watch");
+      });
+    });
+  }
+
+  function openDhmTab(route) {
+    if (typeof chrome !== "undefined" && chrome.tabs) {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0] && tabs[0].id) {
+          const url = tabs[0].url || "";
+          if (url.includes("hydrology.gov.np")) {
+            chrome.tabs.update(tabs[0].id, { url: `https://hydrology.gov.np/${route}` }, () => {
+              window.close();
+            });
+            return;
+          }
+        }
+        chrome.tabs.create({ url: `https://hydrology.gov.np/${route}` }, () => window.close());
+      });
+    }
   }
 
   function escapeHtml(str) {

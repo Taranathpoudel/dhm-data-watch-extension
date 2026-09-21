@@ -942,6 +942,62 @@
   gap: 8px;
 }
 
+/* 5-Minute Auto-Refresh Live Box in River Watch Toolbar */
+.dhm-rw-autorefresh-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dhm-rw-ar-icon {
+  font-size: 14px;
+}
+
+.dhm-rw-ar-text {
+  color: #15803d;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.dhm-rw-ar-timer {
+  background: #15803d;
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.dhm-rw-ar-btn-reload {
+  background: #ffffff;
+  border: 1px solid #86efac;
+  color: #15803d;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dhm-rw-ar-btn-reload:hover {
+  background: #15803d;
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
 .dhm-rw-btn {
   display: inline-flex;
   align-items: center;
@@ -1326,6 +1382,48 @@ table.watch_table tbody tr.watch_table_tr:hover {
   min-width: 28px;
 }
 
+/* Floating Widget Countdown Chip */
+.dhm-widget-timer-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 12px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.dhm-widget-timer-chip:hover {
+  background: #15803d;
+  color: #ffffff;
+}
+
+.dhm-widget-timer-chip:active {
+  transform: scale(0.95);
+}
+
+/* Data Watch Dashboard Countdown Chip */
+.dw-countdown-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  background: #0f72a9;
+  color: #ffffff;
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+}
+
 #dhm-floating-toggle-widget.is-disabled {
   background: #f8fafc;
   border-color: #e2e8f0;
@@ -1338,6 +1436,10 @@ table.watch_table tbody tr.watch_table_tr:hover {
 
 #dhm-floating-toggle-widget.is-disabled .dhm-widget-status {
   color: #64748b;
+}
+
+#dhm-floating-toggle-widget.is-disabled .dhm-widget-timer-chip {
+  display: none;
 }
 
 /* Responsive adjustments */
@@ -1361,3 +1463,676 @@ table.watch_table tbody tr.watch_table_tr:hover {
     width: 100%;
   }
 }
+
+/* River Trend Change Alert Toast (Early Reload before 5 min) */
+.dhm-toast-trend-change {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #7f1d1d;
+  color: #ffffff;
+  padding: 14px 22px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 9999999;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  animation: dhmToastSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 2px solid #ef4444;
+  pointer-events: none;
+}
+
+@keyframes dhmToastSlideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -24px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.dhm-toast-icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dhm-toast-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fecaca;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.dhm-toast-msg {
+  font-size: 13px;
+  color: #ffffff;
+  margin-top: 2px;
+}
+
+.dhm-toast-sub {
+  font-size: 11px;
+  color: #fca5a5;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* =============================================================
+   HIDE AUTO-REFRESH TIMER UI
+   The auto-refresh engine continues to run in the background;
+   only the visual countdown / status elements are hidden.
+   ============================================================= */
+.dhm-rw-autorefresh-box,
+#dw-countdown-timer,
+#dw-auto-refresh-select,
+.dhm-widget-timer-chip {
+  display: none !important;
+}
+
+/* =============================================================
+   HAZARD LEVEL EXCEEDED ALERT FLEXES (WARNING, DANGER & NO WARNING)
+   ============================================================= */
+.dhm-hazard-alerts-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 12px 0 16px 0;
+}
+
+/* Base Flex */
+.dhm-hazard-flex {
+  display: flex;
+  box-sizing: border-box;
+  border-radius: 8px;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* 1. Green Flex - No Warning (When no stations in warning or danger level) */
+.dhm-hazard-flex-nowarning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 18px;
+  background-color: #ecfdf5;
+  border: 1.5px solid #10b981;
+  border-left: 6px solid #059669;
+  color: #065f46;
+}
+
+.dhm-hazard-flex-nowarning .dhm-hf-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dhm-hazard-flex-nowarning .dhm-hf-icon {
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dhm-hazard-flex-nowarning .dhm-hf-content {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dhm-hazard-flex-nowarning .dhm-hf-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #065f46;
+  letter-spacing: -0.2px;
+}
+
+.dhm-hazard-flex-nowarning .dhm-hf-desc {
+  font-size: 13px;
+  color: #047857;
+  font-weight: 500;
+}
+
+.dhm-hazard-flex-nowarning .dhm-hf-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+/* 2. Yellow Flex - Warning Level Exceeded (When >= 1 stations in warning) */
+.dhm-hazard-flex-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  background-color: #fffbeb;
+  border: 1.5px solid #f59e0b;
+  border-left: 6px solid #d97706;
+  color: #78350f;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+  animation: dhm-fade-in 0.3s ease;
+}
+
+.dhm-hazard-flex-warning .dhm-hf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dhm-hazard-flex-warning .dhm-hf-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dhm-hazard-flex-warning .dhm-hf-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.dhm-hazard-flex-warning .dhm-hf-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #92400e;
+  letter-spacing: -0.2px;
+}
+
+.dhm-hazard-flex-warning .dhm-hf-badge {
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+
+.dhm-hazard-flex-warning .dhm-hf-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dhm-hazard-flex-warning .dhm-hf-desc {
+  font-size: 12px;
+  color: #b45309;
+  font-weight: 500;
+}
+
+.dhm-hf-btn-warning {
+  background: #f59e0b;
+  color: #ffffff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dhm-hf-btn-warning:hover {
+  background: #d97706;
+}
+
+/* 3. Red Flex - Danger Level Exceeded (When >= 1 stations in danger) */
+.dhm-hazard-flex-danger {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  background-color: #fef2f2;
+  border: 1.5px solid #ef4444;
+  border-left: 6px solid #dc2626;
+  color: #7f1d1d;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+  animation: dhm-fade-in 0.3s ease;
+}
+
+.dhm-hazard-flex-danger .dhm-hf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dhm-hazard-flex-danger .dhm-hf-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dhm-hazard-flex-danger .dhm-hf-icon {
+  font-size: 22px;
+  line-height: 1;
+  animation: dhm-pulse-danger-icon 1.5s infinite;
+}
+
+@keyframes dhm-pulse-danger-icon {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+
+.dhm-hazard-flex-danger .dhm-hf-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #b91c1c;
+  letter-spacing: -0.2px;
+}
+
+.dhm-hazard-flex-danger .dhm-hf-badge {
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+  animation: dhm-pulse-rising 1.5s infinite;
+}
+
+.dhm-hazard-flex-danger .dhm-hf-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dhm-hazard-flex-danger .dhm-hf-desc {
+  font-size: 12px;
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.dhm-hf-btn-danger {
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dhm-hf-btn-danger:hover {
+  background: #b91c1c;
+}
+
+/* Stations Flex List inside Warning / Danger Flex */
+.dhm-hf-stations-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Individual Station Card / Chip in Flex */
+.dhm-hf-station-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  user-select: none;
+}
+
+.dhm-hf-chip-warning {
+  background: #ffffff;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.dhm-hf-chip-warning:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(245, 158, 11, 0.25);
+}
+
+.dhm-hf-chip-danger {
+  background: #ffffff;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+.dhm-hf-chip-danger:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(239, 68, 68, 0.25);
+}
+
+.dhm-hf-chip-name {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.dhm-hf-chip-loc {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.dhm-hf-chip-val {
+  font-size: 11.5px;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.dhm-hf-chip-thresh {
+  font-size: 11px;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.dhm-hf-chip-warning .dhm-hf-chip-diff {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.dhm-hf-chip-danger .dhm-hf-chip-diff {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.dhm-hf-chip-trend {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* Row Flash Highlight when navigating from chip */
+.dhm-row-highlight {
+  animation: dhm-row-flash 2.5s ease-out !important;
+}
+
+@keyframes dhm-row-flash {
+  0% { background-color: #fef08a !important; }
+  35% { background-color: #fef08a !important; }
+  100% { background-color: transparent !important; }
+}
+
+/* ==========================================================================
+   4. Blue / Cyan Flex Type - Rising Stations Flex & Dedicated Table
+   ========================================================================== */
+.dhm-rw-rising-flex-container {
+  width: 100%;
+  margin: 10px 0 14px 0;
+  box-sizing: border-box;
+}
+
+.dhm-hazard-flex-rising {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px;
+  background-color: #f0f9ff;
+  border: 1.5px solid #0284c7;
+  border-left: 6px solid #0369a1;
+  color: #0c4a6e;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.14);
+  animation: dhm-fade-in 0.3s ease;
+  box-sizing: border-box;
+}
+
+.dhm-hazard-flex-rising .dhm-hf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dhm-hazard-flex-rising .dhm-hf-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dhm-hazard-flex-rising .dhm-hf-icon {
+  font-size: 22px;
+  line-height: 1;
+  display: inline-block;
+  animation: dhm-bounce-rising 1.8s infinite;
+}
+
+@keyframes dhm-bounce-rising {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.dhm-hazard-flex-rising .dhm-hf-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0369a1;
+  letter-spacing: -0.2px;
+}
+
+.dhm-hazard-flex-rising .dhm-hf-badge {
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 12px;
+  letter-spacing: 0.3px;
+}
+
+.dhm-hazard-flex-rising .dhm-hf-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dhm-hazard-flex-rising .dhm-hf-desc {
+  font-size: 12px;
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.dhm-hf-btn-rising {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 4px 11px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(2, 132, 199, 0.2);
+}
+
+.dhm-hf-btn-rising:hover {
+  background: #0369a1;
+  box-shadow: 0 2px 4px rgba(3, 105, 161, 0.3);
+}
+
+.dhm-hf-collapse-btn {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  padding: 4px 11px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dhm-hf-collapse-btn:hover {
+  background: #bae6fd;
+}
+
+.dhm-rising-table-wrapper {
+  width: 100%;
+  margin-top: 6px;
+  transition: all 0.3s ease;
+}
+
+.dhm-rising-table-wrapper.collapsed {
+  display: none;
+}
+
+.dhm-rising-table-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.dhm-rising-table-note {
+  font-size: 12px;
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.dhm-rising-mini-search {
+  display: flex;
+  align-items: center;
+}
+
+.dhm-rising-search-input {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  border: 1px solid #bae6fd;
+  border-radius: 4px;
+  outline: none;
+  width: 175px;
+  background: #ffffff;
+  color: #0f172a;
+  transition: border-color 0.2s;
+}
+
+.dhm-rising-search-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+}
+
+.dhm-rising-table-scroll {
+  width: 100%;
+  max-height: 350px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dhm-rising-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.dhm-rising-table thead th {
+  position: sticky;
+  top: 0;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-weight: 700;
+  padding: 8px 10px;
+  border-bottom: 2px solid #38bdf8;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.dhm-rising-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.15s ease;
+}
+
+.dhm-rising-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.dhm-rising-table tbody tr.dhm-rising-row-hazard {
+  background-color: #fffbeb;
+}
+
+.dhm-rising-table tbody tr.dhm-rising-row-hazard:hover {
+  background-color: #fef3c7;
+}
+
+.dhm-rising-table tbody td {
+  padding: 7px 10px;
+  vertical-align: middle;
+}
+
+.dhm-btn-locate-station {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.dhm-btn-locate-station:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+
+.dhm-rising-empty-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #ffffff;
+  border: 1.5px dashed #bae6fd;
+  border-radius: 6px;
+  margin-top: 4px;
+}
+
+

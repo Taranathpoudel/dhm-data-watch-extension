@@ -138,7 +138,7 @@ input:checked + .slider:before {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .clock-label {
@@ -151,6 +151,50 @@ input:checked + .slider:before {
   font-size: 14px;
   font-weight: 700;
   color: #38bdf8;
+}
+
+/* 5-Minute Auto-Refresh Banner in Popup (hidden) */
+.popup-autorefresh-card {
+  display: none !important;
+}
+
+.pop-ar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pop-ar-icon {
+  font-size: 18px;
+}
+
+.pop-ar-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #166534;
+  line-height: 1.2;
+}
+
+.pop-ar-sub {
+  font-size: 10px;
+  color: #15803d;
+}
+
+.pop-ar-refresh-btn {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  padding: 5px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.pop-ar-refresh-btn:hover {
+  background: #15803d;
 }
 
 .popup-section-title {
@@ -362,4 +406,184 @@ input:checked + .slider:before {
 
 .btn-data-watch:hover {
   background: #0a547e;
+}
+
+/* =============================================================
+   POPUP HAZARD LEVEL ALERT FLEXES
+   ============================================================= */
+.pop-hazard-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pop-hazard-flex {
+  display: flex;
+  border-radius: 6px;
+  font-size: 11.5px;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+/* Green Flex - No Warning */
+.pop-hazard-flex-nowarning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #ecfdf5;
+  border: 1px solid #10b981;
+  border-left: 4px solid #059669;
+  color: #065f46;
+}
+
+.pop-hazard-flex-nowarning .pop-hf-icon {
+  font-size: 16px;
+}
+
+.pop-hazard-flex-nowarning .pop-hf-text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pop-hazard-flex-nowarning .pop-hf-title {
+  font-weight: 700;
+  color: #065f46;
+}
+
+.pop-hazard-flex-nowarning .pop-hf-desc {
+  font-size: 10.5px;
+  color: #047857;
+}
+
+/* Yellow Flex - Warning Level Exceeded */
+.pop-hazard-flex-warning {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background-color: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-left: 4px solid #d97706;
+  color: #78350f;
+}
+
+.pop-hazard-flex-warning .pop-hf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pop-hazard-flex-warning .pop-hf-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pop-hazard-flex-warning .pop-hf-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: #92400e;
+}
+
+.pop-hazard-flex-warning .pop-hf-badge {
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+/* Red Flex - Danger Level Exceeded */
+.pop-hazard-flex-danger {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background-color: #fef2f2;
+  border: 1px solid #ef4444;
+  border-left: 4px solid #dc2626;
+  color: #7f1d1d;
+}
+
+.pop-hazard-flex-danger .pop-hf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pop-hazard-flex-danger .pop-hf-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pop-hazard-flex-danger .pop-hf-title {
+  font-weight: 700;
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+.pop-hazard-flex-danger .pop-hf-badge {
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+/* Station chips in popup flex */
+.pop-hf-stations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 90px;
+  overflow-y: auto;
+}
+
+.pop-hf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.pop-hf-chip-warning {
+  background: #ffffff;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.pop-hf-chip-warning:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.pop-hf-chip-danger {
+  background: #ffffff;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+.pop-hf-chip-danger:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+.pop-hf-chip-name {
+  font-weight: 600;
+}
+
+.pop-hf-chip-diff {
+  font-weight: 700;
+  font-size: 10.5px;
 }

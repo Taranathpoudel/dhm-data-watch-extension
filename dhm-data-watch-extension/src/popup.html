@@ -35,6 +35,25 @@
       <span class="clock-time" id="pop-clock">--:--:-- --</span>
     </div>
 
+    <!-- 5-Minute Auto-Refresh Status Card -->
+    <div class="popup-autorefresh-card">
+      <div class="pop-ar-left">
+        <span class="pop-ar-icon">⏱️</span>
+        <div>
+          <div class="pop-ar-title">5-Min Auto-Refresh Active</div>
+          <div class="pop-ar-sub">River Watch & Near / Exceeding Warning loaded by default</div>
+        </div>
+      </div>
+      <div class="pop-ar-right">
+        <button class="pop-ar-refresh-btn" id="pop-btn-refresh-now" title="Refresh active DHM tab now">
+          <span>🔄 Reload Now</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Hazard Level Alerts (Warning, Danger, No Warning) -->
+    <div class="pop-hazard-wrapper" id="pop-hazard-wrapper"></div>
+
     <!-- Trend Telemetry Summary -->
     <div class="popup-section-title">River Watch Trends</div>
     <div class="popup-stats-grid popup-trend-grid">
